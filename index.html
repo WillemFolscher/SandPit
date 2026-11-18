@@ -2,420 +2,594 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+</head>
+<body>
 <title>Work Hours Clock</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
 <style>
+  /* Layout: one narrow column of tool panels — punch clock on top, totals, timesheet, settings. */
   :root {
-    --bg: #f5f6f8; --card: #ffffff; --text: #1b1f24; --muted: #6b7280;
-    --border: #e3e6ea; --accent: #2563eb; --accent-text: #fff;
-    --green: #16a34a; --red: #dc2626; --amber: #d97706;
+    --bg: #f3f5f4; --card: #ffffff; --fg: #18201d; --muted: #61706a; --line: #dfe5e2; --field: #f7f9f8;
+    --accent: #0f766e; --accent-fg: #ffffff; --accent-soft: #d6efec;
+    --good: #15803d; --warn: #b45309; --bad: #c2410c;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1216; --card: #181c22; --text: #e6e8eb; --muted: #9aa3ad;
-      --border: #2a3038; --accent: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+    :root:not([data-theme="light"]) {
+      --bg: #0e1412; --card: #161e1b; --fg: #e4ebe8; --muted: #93a39c; --line: #26322d; --field: #111916;
+      --accent: #2dd4bf; --accent-fg: #06201c; --accent-soft: #123a35;
+      --good: #4ade80; --warn: #fbbf24; --bad: #fb923c; color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1412; --card: #161e1b; --fg: #e4ebe8; --muted: #93a39c; --line: #26322d; --field: #111916;
+    --accent: #2dd4bf; --accent-fg: #06201c; --accent-soft: #123a35;
+    --good: #4ade80; --warn: #fbbf24; --bad: #fb923c; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--fg); font: 15px/1.45 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
-  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
-  h1 { font-size: 1.35rem; margin: 0 0 16px; }
-  h2 { font-size: 1rem; margin: 0 0 12px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
-  .dot.in { background: var(--green); } .dot.break { background: var(--amber); }
-  .timer { font-variant-numeric: tabular-nums; font-size: 2.6rem; font-weight: 650; margin: 6px 0 14px; letter-spacing: .5px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  button {
-    font: inherit; border: 1px solid var(--border); background: var(--card); color: var(--text);
-    border-radius: 8px; padding: 9px 14px; cursor: pointer;
-  }
-  button:hover { filter: brightness(.97); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-  button.danger { color: var(--red); }
-  button.big { padding: 12px 22px; font-size: 1.05rem; }
-  button:disabled { opacity: .45; cursor: default; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-  .stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .stat .label { color: var(--muted); font-size: .8rem; }
-  .stat .value { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .pos { color: var(--green); } .neg { color: var(--red); }
-  .bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 6px; }
-  .bar > div { height: 100%; background: var(--accent); }
-  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
-  input, select {
-    font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 10px; width: 100%;
-  }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
-  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: .8rem; }
-  td.num, th.num { text-align: right; }
-  .day-head td { background: var(--bg); font-weight: 600; }
-  .note { color: var(--muted); font-size: .85rem; }
-  .actions button { padding: 4px 8px; font-size: .8rem; }
-  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-  .table-wrap { overflow-x: auto; }
-  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); width: min(440px, calc(100% - 32px)); }
-  dialog::backdrop { background: rgba(0,0,0,.4); }
-  .muted { color: var(--muted); }
-</style>
-</head>
-<body>
-<main>
-  <h1>Work Hours Clock</h1>
+  main { max-width: 720px; margin: 0 auto; padding-block: 20px 48px; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  h1 { font: 700 1.4rem/1.2 var(--display); margin: 0; text-wrap: balance; }
+  h2 { font: 600 1rem/1.3 var(--display); margin: 0; }
+  .sync { font-size: .78rem; color: var(--muted); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
-  <!-- Clock in / out -->
-  <section class="card">
+  .clock { gap: 14px; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.in { background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 20%, transparent); }
+  .dot.break { background: var(--warn); }
+  .timer { font: 600 clamp(2.6rem, 12vw, 3.6rem)/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+  .actions-main { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 9px; padding: 9px 14px; cursor: pointer; min-height: 40px;
+  }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  button.out { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  button.big { min-height: 56px; font-size: 1.05rem; font-weight: 600; }
+  button.danger { color: var(--bad); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (min-width: 620px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .stat .label { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+  .stat .value { font: 600 1.25rem/1.25 var(--display); font-variant-numeric: tabular-nums; }
+  .stat .sub { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .bar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .bar > div { height: 100%; background: var(--accent); transition: width .4s; }
+
+  label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    font: inherit; color: var(--fg); background: var(--field); border: 1px solid var(--line);
+    border-radius: 9px; padding: 8px 10px; width: 100%; min-height: 40px;
+  }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .days { display: flex; flex-direction: column; gap: 10px; }
+  .day { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .day-head { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--field); font-weight: 600; font-size: .9rem; }
+  .day-head span:last-child { font-variant-numeric: tabular-nums; }
+  .shift { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: center; }
+  .shift .times { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .shift .meta { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .shift .worked { font: 600 1.05rem var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+  .shift .btns { grid-column: 1 / -1; display: flex; gap: 6px; }
+  .shift .btns button { min-height: 32px; padding: 4px 10px; font-size: .82rem; }
+  .pill { display: inline-block; font-size: .72rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .empty { color: var(--muted); padding: 18px 4px; text-align: center; }
+  .note { color: var(--muted); font-size: .85rem; margin: 0; }
+
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); width: min(440px, calc(100% - 32px)); padding: 18px; }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  dialog form { display: flex; flex-direction: column; gap: 12px; }
+  .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; }
+  .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 9px; font-size: .88rem; z-index: 20; }
+  @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <h1>Work Hours Clock</h1>
+    <span class="sync" id="syncNote">Loading…</span>
+  </header>
+
+  <section class="panel clock" aria-label="Time clock">
     <div class="status"><span id="dot" class="dot"></span><span id="statusText">Clocked out</span></div>
-    <div class="timer" id="timer">0:00:00</div>
-    <div class="row">
+    <div class="timer" id="timer" aria-live="off">0:00:00</div>
+    <div class="actions-main">
       <button id="clockBtn" class="primary big">Clock in</button>
       <button id="breakBtn" class="big" disabled>Start break</button>
     </div>
-    <div style="margin-top:12px">
-      <input id="noteInput" placeholder="Note for this shift (optional)">
-    </div>
+    <input id="noteInput" placeholder="Note for this shift (optional)" aria-label="Shift note">
   </section>
 
-  <!-- Summary -->
-  <section class="card">
-    <h2>Summary</h2>
+  <section class="panel" aria-label="Totals">
     <div class="stats">
-      <div class="stat"><div class="label">Today</div><div class="value" id="sToday">0:00</div>
-        <div class="bar"><div id="barToday" style="width:0"></div></div></div>
-      <div class="stat"><div class="label">This week</div><div class="value" id="sWeek">0:00</div>
-        <div class="bar"><div id="barWeek" style="width:0"></div></div></div>
-      <div class="stat"><div class="label">This month</div><div class="value" id="sMonth">0:00</div></div>
-      <div class="stat"><div class="label">Week balance (vs target)</div><div class="value" id="sOver">0:00</div></div>
-      <div class="stat" id="earnStat"><div class="label">Week earnings</div><div class="value" id="sEarn">–</div></div>
+      <div class="stat"><span class="label">Today</span><span class="value" id="sToday">0:00</span><span class="sub" id="sTodaySub"></span><div class="bar"><div id="barToday" style="width:0"></div></div></div>
+      <div class="stat"><span class="label">This week</span><span class="value" id="sWeek">0:00</span><span class="sub" id="sWeekSub"></span><div class="bar"><div id="barWeek" style="width:0"></div></div></div>
+      <div class="stat"><span class="label">Week balance</span><span class="value" id="sOver">–</span><span class="sub" id="sOverSub">vs weekly target</span></div>
+      <div class="stat"><span class="label">This month</span><span class="value" id="sMonth">0:00</span><span class="sub" id="sMonthSub"></span></div>
     </div>
   </section>
 
-  <!-- History -->
-  <section class="card">
+  <section class="panel" aria-label="Timesheet">
     <div class="toolbar">
-      <h2 style="margin:0">History</h2>
+      <h2>Timesheet</h2>
       <div class="row">
-        <select id="rangeSel" style="width:auto">
+        <select id="rangeSel" aria-label="Period" style="width:auto">
           <option value="week">This week</option>
           <option value="lastweek">Last week</option>
           <option value="month">This month</option>
-          <option value="all">All</option>
+          <option value="lastmonth">Last month</option>
+          <option value="all">All time</option>
         </select>
-        <button id="addBtn">+ Add entry</button>
+        <button id="addBtn">Add entry</button>
         <button id="csvBtn">Export CSV</button>
       </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>In</th><th>Out</th><th class="num">Break</th><th class="num">Worked</th><th></th></tr></thead>
-        <tbody id="hist"></tbody>
-      </table>
-    </div>
+    <div class="days" id="hist"></div>
     <p class="note" id="rangeTotal"></p>
   </section>
 
-  <!-- Settings -->
-  <section class="card">
+  <section class="panel" aria-label="Settings">
     <h2>Settings</h2>
-    <div class="grid">
-      <div><label for="setDaily">Daily target (hours)</label><input id="setDaily" type="number" min="0" step="0.25"></div>
-      <div><label for="setWeekly">Weekly target (hours)</label><input id="setWeekly" type="number" min="0" step="0.25"></div>
-      <div><label for="setRate">Hourly rate (optional)</label><input id="setRate" type="number" min="0" step="0.01"></div>
+    <div class="fields">
+      <div><label for="setDaily">Daily target (hours)</label><input id="setDaily" type="number" min="0" step="0.25" inputmode="decimal"></div>
+      <div><label for="setWeekly">Weekly target (hours)</label><input id="setWeekly" type="number" min="0" step="0.25" inputmode="decimal"></div>
+      <div><label for="setRate">Hourly rate (optional)</label><input id="setRate" type="number" min="0" step="0.01" inputmode="decimal"></div>
       <div><label for="setWeekStart">Week starts on</label>
         <select id="setWeekStart"><option value="1">Monday</option><option value="0">Sunday</option></select></div>
     </div>
     <div class="row">
       <button id="backupBtn">Download backup</button>
       <button id="restoreBtn">Restore backup</button>
-      <input id="restoreFile" type="file" accept="application/json" hidden>
+      <input id="restoreFile" type="file" accept="application/json,.json" hidden>
       <button id="wipeBtn" class="danger">Delete all data</button>
     </div>
-    <p class="note">Data is saved in this browser only. Download a backup to keep it safe or move it to another device.</p>
+    <p class="note" id="storageNote"></p>
   </section>
 </main>
 
 <dialog id="editDlg">
-  <form method="dialog" id="editForm">
+  <form id="editForm">
     <h2 id="editTitle">Edit entry</h2>
-    <div class="grid">
+    <div class="fields">
       <div><label for="eIn">Clock in</label><input id="eIn" type="datetime-local" required></div>
       <div><label for="eOut">Clock out</label><input id="eOut" type="datetime-local"></div>
-      <div><label for="eBreak">Break (minutes)</label><input id="eBreak" type="number" min="0" step="1"></div>
+      <div><label for="eBreak">Break (minutes)</label><input id="eBreak" type="number" min="0" step="1" inputmode="numeric"></div>
     </div>
-    <div style="margin-bottom:12px"><label for="eNote">Note</label><input id="eNote"></div>
+    <div><label for="eNote">Note</label><input id="eNote"></div>
     <p class="note neg" id="eErr"></p>
-    <div class="row" style="justify-content:flex-end">
-      <button value="cancel" formnovalidate>Cancel</button>
-      <button value="save" class="primary" id="eSave">Save</button>
+    <div class="dlg-btns">
+      <button type="button" id="eCancel">Cancel</button>
+      <button type="submit" class="primary">Save</button>
     </div>
   </form>
 </dialog>
 
+<dialog id="askDlg">
+  <form id="askForm">
+    <p id="askMsg" style="margin:0"></p>
+    <div class="dlg-btns">
+      <button type="button" id="askNo">Cancel</button>
+      <button type="submit" class="primary" id="askYes">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
 <script>
 (() => {
-  const KEY = 'workHoursClock.v1';
   const MIN = 60000, HOUR = 3600000;
+  const LKEY = 'workHoursClock.v1';
+  const DEFAULT_SETTINGS = { daily: 8, weekly: 40, rate: 0, weekStart: 1 };
+  const $ = id => document.getElementById(id);
 
-  // ---------- storage ----------
-  const defaults = () => ({ shifts: [], settings: { daily: 8, weekly: 40, rate: 0, weekStart: 1 } });
-  function load() {
+  // ---------- state ----------
+  // shift: { id, start, end|null, breaks:[{start,end|null}], breakMin, note }
+  let shifts = new Map();
+  let settings = { ...DEFAULT_SETTINGS };
+  let mode = 'local';      // 'local' | 'db'
+  let col = null;          // db collection for this person
+  let dl = null;           // downloads namespace
+
+  // ---------- local storage (fallback / signed-out) ----------
+  function loadLocal() {
     try {
-      const d = JSON.parse(localStorage.getItem(KEY));
-      if (d && Array.isArray(d.shifts)) return { ...defaults(), ...d, settings: { ...defaults().settings, ...d.settings } };
+      const d = JSON.parse(localStorage.getItem(LKEY));
+      if (d && Array.isArray(d.shifts)) {
+        shifts = new Map(d.shifts.map(s => [s.id, s]));
+        settings = { ...DEFAULT_SETTINGS, ...d.settings };
+      }
     } catch (e) {}
-    return defaults();
   }
-  let data = load();
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} render(); }
+  function saveLocal() {
+    try { localStorage.setItem(LKEY, JSON.stringify({ shifts: [...shifts.values()], settings })); } catch (e) {}
+  }
 
-  // Shift: { id, start, end|null, breaks: [{start, end|null}], breakMin (manual extra), note }
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  const active = () => data.shifts.find(s => s.end == null);
-  const onBreak = s => s && s.breaks.some(b => b.end == null);
+  // ---------- db writes: one at a time per document ----------
+  const chains = new Map();
+  function write(docId, fn) {
+    const prev = chains.get(docId) || Promise.resolve();
+    const next = prev.then(fn).catch(err => {
+      console.error(err);
+      toast('Could not save. Check your connection.');
+    });
+    chains.set(docId, next);
+    return next;
+  }
+  function persistShift(s) {
+    if (mode === 'db') write('s_' + s.id, () => col.doc('s_' + s.id).set(JSON.parse(JSON.stringify(s))));
+    else saveLocal();
+  }
+  function removeShift(id) {
+    shifts.delete(id);
+    if (mode === 'db') write('s_' + id, () => col.doc('s_' + id).delete());
+    else saveLocal();
+  }
+  function persistSettings() {
+    if (mode === 'db') write('settings', () => col.doc('settings').set({ ...settings }));
+    else saveLocal();
+  }
 
+  async function connect() {
+    loadLocal();
+    render();
+    const use = window.claude && window.claude.use;
+    if (!use) return setLocalMode();
+    try {
+      const [db, user, downloads] = await Promise.all([use('db'), use('user'), use('downloads')]);
+      dl = downloads;
+      const uid = user ? await user.id() : null;
+      if (!db || !uid) return setLocalMode();
+      col = db.collection('data/users/' + uid);
+      mode = 'db';
+      $('syncNote').textContent = 'Syncing…';
+      const slow = setTimeout(() => { $('syncNote').textContent = 'Can’t reach saved data yet'; }, 10000);
+      let migrated = false;
+      col.onSnapshot(snap => {
+        const next = new Map(); let st = null;
+        for (const d of snap.docs) {
+          const v = d.data();
+          if (d.id === 'settings') st = v;
+          else if (d.id.startsWith('s_')) next.set(v.id, JSON.parse(JSON.stringify(v)));
+        }
+        if (!snap.metadata.fromCache) {
+          clearTimeout(slow);
+          $('syncNote').textContent = 'Synced to your account';
+          // First run on this account: move any entries kept in this browser into the account.
+          if (!migrated) {
+            migrated = true;
+            if (next.size === 0 && !st && shifts.size) {
+              for (const s of shifts.values()) persistShift(s);
+              persistSettings();
+              return render();
+            }
+          }
+        }
+        shifts = next;
+        settings = { ...DEFAULT_SETTINGS, ...(st || {}) };
+        render();
+      }, err => {
+        clearTimeout(slow);
+        console.error(err);
+        $('syncNote').textContent = 'Sync stopped. Reload to reconnect.';
+      });
+      $('storageNote').textContent = 'Your entries are saved to your Claude account, so they show up on every device where you open this page. Only you can see them.';
+    } catch (e) {
+      console.error(e);
+      setLocalMode();
+    }
+  }
+  function setLocalMode() {
+    mode = 'local';
+    $('syncNote').textContent = 'Saved on this device';
+    $('storageNote').textContent = window.claude
+      ? 'Entries are saved in this browser only. Sign in to claude.ai to sync them across devices, or download a backup.'
+      : 'Entries are saved in this browser only. Open the app from your claude.ai link to sync across devices, or use a backup to move data.';
+    render();
+  }
+
+  // ---------- calculations ----------
+  const all = () => [...shifts.values()];
+  const active = () => all().find(s => s.end == null);
+  const openBreak = s => s && (s.breaks || []).find(b => b.end == null);
   function breakMs(s, now = Date.now()) {
     let ms = (s.breakMin || 0) * MIN;
-    for (const b of s.breaks) ms += (b.end ?? now) - b.start;
+    for (const b of s.breaks || []) ms += (b.end ?? now) - b.start;
     return ms;
   }
-  function workedMs(s, now = Date.now()) {
-    return Math.max(0, (s.end ?? now) - s.start - breakMs(s, now));
-  }
-  // Worked time of a shift that falls inside [a, b). Breaks are spread proportionally.
+  const workedMs = (s, now = Date.now()) => Math.max(0, (s.end ?? now) - s.start - breakMs(s, now));
+  // Share of a shift's worked time that falls in [a, b); breaks are spread evenly.
   function workedIn(s, a, b, now = Date.now()) {
-    const end = s.end ?? now;
-    const span = end - s.start;
+    const end = s.end ?? now, span = end - s.start;
     if (span <= 0) return 0;
     const overlap = Math.max(0, Math.min(end, b) - Math.max(s.start, a));
     return workedMs(s, now) * (overlap / span);
   }
-
-  // ---------- dates ----------
   const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-  function startOfWeek(d) {
-    const x = startOfDay(d);
-    const diff = (x.getDay() - data.settings.weekStart + 7) % 7;
-    return addDays(x, -diff);
-  }
-  const startOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
+  const startOfWeek = d => { const x = startOfDay(d); return addDays(x, -((x.getDay() - settings.weekStart + 7) % 7)); };
+  const startOfMonth = d => { const x = new Date(d); return new Date(x.getFullYear(), x.getMonth(), 1); };
+  const nextMonth = d => new Date(d.getFullYear(), d.getMonth() + 1, 1);
   function range(kind) {
     const now = new Date();
     if (kind === 'week') { const a = startOfWeek(now); return [a, addDays(a, 7)]; }
     if (kind === 'lastweek') { const a = addDays(startOfWeek(now), -7); return [a, addDays(a, 7)]; }
-    if (kind === 'month') { const a = startOfMonth(now); return [a, new Date(a.getFullYear(), a.getMonth() + 1, 1)]; }
+    if (kind === 'month') { const a = startOfMonth(now); return [a, nextMonth(a)]; }
+    if (kind === 'lastmonth') { const b = startOfMonth(now); return [new Date(b.getFullYear(), b.getMonth() - 1, 1), b]; }
     return [new Date(0), new Date(8.64e15)];
   }
-  const total = (a, b) => data.shifts.reduce((t, s) => t + workedIn(s, +a, +b), 0);
+  const total = (a, b) => all().reduce((t, s) => t + workedIn(s, +a, +b), 0);
+  const shiftsIn = (a, b) => all().filter(s => s.start < +b && (s.end ?? Date.now()) > +a).sort((x, y) => x.start - y.start);
 
   // ---------- formatting ----------
   const pad = n => String(n).padStart(2, '0');
   function hm(ms, signed = false) {
-    const neg = ms < 0; ms = Math.abs(ms);
-    const m = Math.floor(ms / MIN);
+    const neg = ms < 0, m = Math.floor(Math.abs(ms) / MIN);
     return (neg ? '−' : signed ? '+' : '') + Math.floor(m / 60) + ':' + pad(m % 60);
   }
-  function hms(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 3600) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); }
+  const hms = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 3600) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); };
   const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
-  const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
   const fmtTime = t => timeFmt.format(new Date(t));
-  const toLocalInput = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const toInput = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const isoDate = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-  // ---------- elements ----------
-  const $ = id => document.getElementById(id);
-  const clockBtn = $('clockBtn'), breakBtn = $('breakBtn'), noteInput = $('noteInput');
+  // ---------- small UI helpers ----------
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+  function ask(msg, yesLabel = 'OK', danger = false) {
+    return new Promise(resolve => {
+      const d = $('askDlg');
+      $('askMsg').textContent = msg;
+      $('askYes').textContent = yesLabel;
+      $('askYes').className = danger ? 'danger' : 'primary';
+      const done = v => { d.close(); $('askForm').onsubmit = null; $('askNo').onclick = null; d.oncancel = null; resolve(v); };
+      $('askForm').onsubmit = e => { e.preventDefault(); done(true); };
+      $('askNo').onclick = () => done(false);
+      d.oncancel = e => { e.preventDefault(); done(false); };
+      d.showModal();
+    });
+  }
+  async function saveFile(filename, data, type) {
+    if (!dl) {
+      // Outside claude.ai (opened as a plain file or from GitHub): use a normal browser download.
+      if (window.claude) { toast('Downloads aren’t available here.'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([data], { type }));
+      a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      return;
+    }
+    try { await dl.save({ filename, data: new Blob([data], { type }) }); toast('Saved ' + filename); }
+    catch (e) { if (e && e.code !== 'declined') toast('Could not save the file.'); }
+  }
 
-  // ---------- actions ----------
-  clockBtn.onclick = () => {
+  // ---------- clock actions ----------
+  $('clockBtn').onclick = () => {
     const s = active(), now = Date.now();
     if (s) {
-      for (const b of s.breaks) if (b.end == null) b.end = now;
+      for (const b of s.breaks || []) if (b.end == null) b.end = now;
       s.end = now;
-      s.note = noteInput.value.trim();
-      noteInput.value = '';
+      s.note = $('noteInput').value.trim();
+      $('noteInput').value = '';
+      persistShift(s);
+      toast('Clocked out · ' + hm(workedMs(s)) + ' worked');
     } else {
-      data.shifts.push({ id: uid(), start: now, end: null, breaks: [], breakMin: 0, note: noteInput.value.trim() });
+      const n = { id: uid(), start: now, end: null, breaks: [], breakMin: 0, note: $('noteInput').value.trim() };
+      shifts.set(n.id, n);
+      persistShift(n);
+      toast('Clocked in at ' + fmtTime(now));
     }
-    save();
+    render();
   };
-  breakBtn.onclick = () => {
+  $('breakBtn').onclick = () => {
     const s = active(); if (!s) return;
-    const now = Date.now(), open = s.breaks.find(b => b.end == null);
-    if (open) open.end = now; else s.breaks.push({ start: now, end: null });
-    save();
+    const now = Date.now(), b = openBreak(s);
+    s.breaks = s.breaks || [];
+    if (b) b.end = now; else s.breaks.push({ start: now, end: null });
+    persistShift(s);
+    render();
   };
-  noteInput.oninput = () => { const s = active(); if (s) { s.note = noteInput.value; try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} } };
+  let noteTimer;
+  $('noteInput').oninput = () => {
+    const s = active(); if (!s) return;
+    s.note = $('noteInput').value;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => persistShift(s), 800);
+  };
 
-  // Settings
+  // ---------- settings ----------
   const setMap = { setDaily: 'daily', setWeekly: 'weekly', setRate: 'rate', setWeekStart: 'weekStart' };
   for (const [id, k] of Object.entries(setMap)) {
-    $(id).onchange = e => { const v = parseFloat(e.target.value); data.settings[k] = isNaN(v) ? 0 : v; save(); };
+    $(id).onchange = e => {
+      const v = parseFloat(e.target.value);
+      settings[k] = isNaN(v) || v < 0 ? 0 : v;
+      persistSettings(); render();
+    };
   }
   $('rangeSel').onchange = render;
+  try { const r = localStorage.getItem(LKEY + '.range'); if (r) $('rangeSel').value = r; } catch (e) {}
+  $('rangeSel').addEventListener('change', () => { try { localStorage.setItem(LKEY + '.range', $('rangeSel').value); } catch (e) {} });
 
-  // Edit dialog
+  // ---------- edit dialog ----------
   const dlg = $('editDlg'); let editing = null;
   function openEdit(s) {
     editing = s;
+    const now = Date.now(), running = !!(s && s.end == null);
     $('editTitle').textContent = s ? 'Edit entry' : 'Add entry';
-    const now = Date.now();
-    $('eIn').value = toLocalInput(s ? s.start : now - 8 * HOUR);
-    $('eOut').value = s ? (s.end ? toLocalInput(s.end) : '') : toLocalInput(now);
-    $('eOut').disabled = !!(s && s.end == null);
+    $('eIn').value = toInput(s ? s.start : now - 8.5 * HOUR);
+    $('eOut').value = s ? (s.end ? toInput(s.end) : '') : toInput(now);
+    $('eOut').disabled = running;
+    $('eOut').placeholder = running ? 'Still clocked in' : '';
     $('eBreak').value = s ? Math.round(breakMs(s) / MIN) : 30;
     $('eNote').value = s ? s.note || '' : '';
     $('eErr').textContent = '';
     dlg.showModal();
   }
   $('addBtn').onclick = () => openEdit(null);
-  $('editForm').addEventListener('submit', e => {
-    if (e.submitter && e.submitter.value !== 'save') return;
+  $('eCancel').onclick = () => dlg.close();
+  $('editForm').onsubmit = e => {
+    e.preventDefault();
+    const running = !!(editing && editing.end == null);
     const start = new Date($('eIn').value).getTime();
-    const isActive = editing && editing.end == null;
-    const end = isActive ? null : ($('eOut').value ? new Date($('eOut').value).getTime() : NaN);
+    const end = running ? null : ($('eOut').value ? new Date($('eOut').value).getTime() : NaN);
     const brk = Math.max(0, parseInt($('eBreak').value, 10) || 0);
-    const err = isNaN(start) ? 'Enter a valid clock-in time.'
-      : (!isActive && isNaN(end)) ? 'Enter a valid clock-out time.'
-      : (!isActive && end <= start) ? 'Clock out must be after clock in.'
-      : (!isActive && brk * MIN >= end - start) ? 'Break is longer than the shift.' : '';
-    if (err) { e.preventDefault(); $('eErr').textContent = err; return; }
+    const err = isNaN(start) ? 'Enter the clock-in time.'
+      : (!running && isNaN(end)) ? 'Enter the clock-out time.'
+      : (!running && end <= start) ? 'Clock out must be after clock in.'
+      : (running && start > Date.now()) ? 'Clock in can’t be in the future.'
+      : (!running && brk * MIN >= end - start) ? 'The break is as long as the whole shift. Shorten it.' : '';
+    if (err) { $('eErr').textContent = err; return; }
     const s = editing || { id: uid(), breaks: [] };
+    const open = running ? openBreak(s) : null;
+    const openMin = open ? (Date.now() - open.start) / MIN : 0;
     s.start = start; s.end = end;
-    // Collapse timed breaks into a minutes value (keep an open break running if active)
-    const open = isActive ? s.breaks.find(b => b.end == null) : null;
-    const openMs = open ? Date.now() - open.start : 0;
     s.breaks = open ? [open] : [];
-    s.breakMin = Math.max(0, brk - openMs / MIN);
+    s.breakMin = Math.max(0, brk - openMin);
     s.note = $('eNote').value.trim();
-    if (!editing) data.shifts.push(s);
-    save();
-  });
-
-  $('hist').onclick = e => {
+    shifts.set(s.id, s);
+    persistShift(s);
+    dlg.close();
+    toast(editing ? 'Entry updated' : 'Entry added');
+    render();
+  };
+  $('hist').onclick = async e => {
     const btn = e.target.closest('button[data-act]'); if (!btn) return;
-    const s = data.shifts.find(x => x.id === btn.dataset.id); if (!s) return;
+    const s = shifts.get(btn.dataset.id); if (!s) return;
     if (btn.dataset.act === 'edit') openEdit(s);
-    if (btn.dataset.act === 'del' && confirm('Delete this entry?')) {
-      data.shifts = data.shifts.filter(x => x !== s); save();
+    if (btn.dataset.act === 'del' && await ask(`Delete the ${fmtTime(s.start)} entry from ${dayFmt.format(new Date(s.start))}?`, 'Delete', true)) {
+      removeShift(s.id); toast('Entry deleted'); render();
     }
   };
 
-  // Export / backup
-  function download(name, text, type) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type }));
-    a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
+  // ---------- export / backup ----------
   $('csvBtn').onclick = () => {
-    const [a, b] = range($('rangeSel').value);
-    const rows = [['Date', 'Clock in', 'Clock out', 'Break (min)', 'Worked (hours)', 'Note']];
+    const kind = $('rangeSel').value, [a, b] = range(kind);
+    const rows = [['Date', 'Clock in', 'Clock out', 'Break (min)', 'Worked (h:mm)', 'Worked (hours)', 'Note']];
     for (const s of shiftsIn(a, b)) {
-      const d = new Date(s.start);
-      rows.push([`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`, fmtTime(s.start),
-        s.end ? fmtTime(s.end) : '', Math.round(breakMs(s) / MIN), (workedMs(s) / HOUR).toFixed(2), s.note || '']);
+      rows.push([isoDate(s.start), fmtTime(s.start), s.end ? fmtTime(s.end) : 'running', Math.round(breakMs(s) / MIN),
+        hm(workedMs(s)), (workedMs(s) / HOUR).toFixed(2), s.note || '']);
     }
     const csv = rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')).join('\n');
-    download(`work-hours-${$('rangeSel').value}.csv`, csv, 'text/csv');
+    saveFile(`work-hours-${kind}-${isoDate(Date.now())}.csv`, csv, 'text/csv');
   };
-  $('backupBtn').onclick = () => download('work-hours-backup.json', JSON.stringify(data, null, 2), 'application/json');
+  $('backupBtn').onclick = () => saveFile(`work-hours-backup-${isoDate(Date.now())}.json`,
+    JSON.stringify({ shifts: all(), settings }, null, 2), 'application/json');
   $('restoreBtn').onclick = () => $('restoreFile').click();
   $('restoreFile').onchange = async e => {
-    const f = e.target.files[0]; if (!f) return;
-    try {
-      const d = JSON.parse(await f.text());
-      if (!Array.isArray(d.shifts)) throw new Error();
-      if (confirm(`Replace current data with ${d.shifts.length} entries from backup?`)) {
-        data = { ...defaults(), ...d, settings: { ...defaults().settings, ...d.settings } }; save();
-      }
-    } catch { alert('That file is not a valid backup.'); }
-    e.target.value = '';
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    let d;
+    try { d = JSON.parse(await f.text()); if (!Array.isArray(d.shifts)) throw 0; }
+    catch { toast('That file isn’t a Work Hours Clock backup.'); return; }
+    if (!await ask(`Replace your ${shifts.size} entries with the ${d.shifts.length} entries in this backup?`, 'Replace', true)) return;
+    for (const id of [...shifts.keys()]) removeShift(id);
+    for (const s of d.shifts) { if (s && s.id && typeof s.start === 'number') { shifts.set(s.id, s); persistShift(s); } }
+    settings = { ...DEFAULT_SETTINGS, ...d.settings }; persistSettings();
+    toast('Backup restored'); render();
   };
-  $('wipeBtn').onclick = () => {
-    if (confirm('Delete ALL entries and settings? This cannot be undone.')) { data = defaults(); save(); }
+  $('wipeBtn').onclick = async () => {
+    if (!await ask('Delete all entries and reset settings? This can’t be undone.', 'Delete everything', true)) return;
+    for (const id of [...shifts.keys()]) removeShift(id);
+    settings = { ...DEFAULT_SETTINGS }; persistSettings();
+    toast('All data deleted'); render();
   };
 
   // ---------- render ----------
-  const shiftsIn = (a, b) => data.shifts
-    .filter(s => s.start < +b && (s.end ?? Date.now()) > +a)
-    .sort((x, y) => x.start - y.start);
-
   function renderLive() {
-    const s = active(), now = Date.now(), brk = onBreak(s);
-    $('dot').className = 'dot' + (s ? (brk ? ' break' : ' in') : '');
-    $('statusText').textContent = s
-      ? (brk ? 'On break' : 'Clocked in') + ' since ' + fmtTime(brk ? s.breaks.find(b => b.end == null).start : s.start)
-      : 'Clocked out';
+    const s = active(), now = Date.now(), b = openBreak(s);
+    $('dot').className = 'dot' + (s ? (b ? ' break' : ' in') : '');
+    $('statusText').textContent = s ? (b ? 'On break since ' + fmtTime(b.start) : 'Clocked in since ' + fmtTime(s.start)) : 'Clocked out';
     $('timer').textContent = hms(s ? workedMs(s, now) : 0);
-    clockBtn.textContent = s ? 'Clock out' : 'Clock in';
-    breakBtn.disabled = !s;
-    breakBtn.textContent = brk ? 'End break' : 'Start break';
+    $('clockBtn').textContent = s ? 'Clock out' : 'Clock in';
+    $('clockBtn').className = 'big ' + (s ? 'out' : 'primary');
+    $('breakBtn').disabled = !s;
+    $('breakBtn').textContent = b ? 'End break' : 'Start break';
 
-    const today = startOfDay(now), wk = startOfWeek(now), mo = startOfMonth(new Date(now));
-    const tDay = total(today, addDays(today, 1));
-    const tWeek = total(wk, addDays(wk, 7));
-    const tMonth = total(mo, new Date(mo.getFullYear(), mo.getMonth() + 1, 1));
-    const { daily, weekly, rate } = data.settings;
-    $('sToday').textContent = hm(tDay) + (daily ? ` / ${daily}h` : '');
-    $('sWeek').textContent = hm(tWeek) + (weekly ? ` / ${weekly}h` : '');
-    $('sMonth').textContent = hm(tMonth);
+    const today = startOfDay(now), wk = startOfWeek(now), mo = startOfMonth(now);
+    const tDay = total(today, addDays(today, 1)), tWeek = total(wk, addDays(wk, 7)), tMonth = total(mo, nextMonth(mo));
+    const { daily, weekly, rate } = settings;
+    $('sToday').textContent = hm(tDay);
+    $('sTodaySub').textContent = daily ? `of ${daily} h` : '';
     $('barToday').style.width = daily ? Math.min(100, tDay / (daily * HOUR) * 100) + '%' : '0';
+    $('sWeek').textContent = hm(tWeek);
+    $('sWeekSub').textContent = (weekly ? `of ${weekly} h` : '') + (rate ? `${weekly ? ' · ' : ''}${money(tWeek / HOUR * rate)} earned` : '');
     $('barWeek').style.width = weekly ? Math.min(100, tWeek / (weekly * HOUR) * 100) + '%' : '0';
     const over = tWeek - weekly * HOUR;
     $('sOver').textContent = weekly ? hm(over, true) : '–';
     $('sOver').className = 'value ' + (weekly ? (over >= 0 ? 'pos' : 'neg') : '');
-    $('earnStat').hidden = !rate;
-    $('sEarn').textContent = money(tWeek / HOUR * rate);
+    $('sOverSub').textContent = weekly ? (over >= 0 ? 'overtime this week' : 'still to work this week') : 'set a weekly target';
+    $('sMonth').textContent = hm(tMonth);
+    $('sMonthSub').textContent = rate ? money(tMonth / HOUR * rate) + ' earned' : (tMonth / HOUR).toFixed(2) + ' h';
   }
 
   function render() {
-    for (const [id, k] of Object.entries(setMap)) if (document.activeElement !== $(id)) $(id).value = data.settings[k] || (k === 'weekStart' ? 0 : '');
+    for (const [id, k] of Object.entries(setMap)) if (document.activeElement !== $(id)) $(id).value = k === 'weekStart' ? String(settings[k]) : (settings[k] || '');
     const s = active();
-    if (s && document.activeElement !== noteInput) noteInput.value = s.note || '';
+    if (s && document.activeElement !== $('noteInput')) $('noteInput').value = s.note || '';
 
-    const [a, b] = range($('rangeSel').value);
-    const list = shiftsIn(a, b);
-    const byDay = new Map();
+    const [a, b] = range($('rangeSel').value), list = shiftsIn(a, b), byDay = new Map();
     for (const sh of list) {
       const k = startOfDay(sh.start).getTime();
       if (!byDay.has(k)) byDay.set(k, []);
       byDay.get(k).push(sh);
     }
     let html = '';
-    for (const [day, shifts] of [...byDay].reverse()) {
-      const dayTotal = shifts.reduce((t, sh) => t + workedMs(sh), 0);
-      html += `<tr class="day-head"><td colspan="3">${dayFmt.format(new Date(day))}</td><td class="num">${hm(dayTotal)}</td><td></td></tr>`;
-      for (const sh of [...shifts].reverse()) {
-        const multiDay = sh.end && startOfDay(sh.end).getTime() !== day;
-        html += `<tr>
-          <td>${fmtTime(sh.start)}${sh.note ? `<div class="note">${esc(sh.note)}</div>` : ''}</td>
-          <td>${sh.end ? fmtTime(sh.end) + (multiDay ? ' <span class="muted">(+1)</span>' : '') : '<span class="pos">running</span>'}</td>
-          <td class="num">${hm(breakMs(sh))}</td>
-          <td class="num">${hm(workedMs(sh))}</td>
-          <td class="num actions"><button data-act="edit" data-id="${sh.id}">Edit</button> <button data-act="del" data-id="${sh.id}" class="danger">✕</button></td>
-        </tr>`;
+    for (const [day, items] of [...byDay].reverse()) {
+      html += `<div class="day"><div class="day-head"><span>${dayFmt.format(new Date(day))}</span><span>${hm(items.reduce((t, x) => t + workedMs(x), 0))}</span></div>`;
+      for (const sh of [...items].reverse()) {
+        const nextDay = sh.end && startOfDay(sh.end).getTime() !== day;
+        const brk = breakMs(sh);
+        html += `<div class="shift">
+          <div><div class="times">${fmtTime(sh.start)} – ${sh.end ? fmtTime(sh.end) + (nextDay ? ' (+1)' : '') : '<span class="pill">running</span>'}</div>
+          <div class="meta">${brk ? 'Break ' + hm(brk) : 'No break'}${sh.note ? ' · ' + esc(sh.note) : ''}</div></div>
+          <div class="worked">${hm(workedMs(sh))}</div>
+          <div class="btns"><button data-act="edit" data-id="${esc(sh.id)}">Edit</button><button data-act="del" data-id="${esc(sh.id)}" class="danger">Delete</button></div>
+        </div>`;
       }
+      html += '</div>';
     }
-    $('hist').innerHTML = html || `<tr><td colspan="5" class="muted">No entries in this period.</td></tr>`;
-    const sum = list.reduce((t, sh) => t + workedMs(sh), 0);
-    $('rangeTotal').textContent = list.length ? `${list.length} shift${list.length > 1 ? 's' : ''} · ${hm(sum)} worked (${(sum / HOUR).toFixed(2)} h)` : '';
+    $('hist').innerHTML = html || `<div class="empty">No shifts in this period yet. Tap <strong>Clock in</strong> when you start work, or use <strong>Add entry</strong> for a shift you missed.</div>`;
+    const sum = list.reduce((t, x) => t + workedMs(x), 0);
+    $('rangeTotal').textContent = list.length
+      ? `${list.length} shift${list.length > 1 ? 's' : ''} · ${hm(sum)} worked (${(sum / HOUR).toFixed(2)} h)${settings.rate ? ' · ' + money(sum / HOUR * settings.rate) + ' earned' : ''}`
+      : '';
     renderLive();
   }
 
-  render();
-  setInterval(() => { renderLive(); }, 1000);
+  setInterval(renderLive, 1000);
   setInterval(() => { if (active()) render(); }, 30000);
-  window.addEventListener('storage', e => { if (e.key === KEY) { data = load(); render(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+  connect();
 })();
 </script>
+
 </body>
 </html>

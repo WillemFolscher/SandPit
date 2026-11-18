@@ -15,4 +15,9 @@ Open `index.html` in any browser (desktop or phone) — no install or server nee
 - **Export CSV** for timesheets
 - **Backup / restore** your data as a JSON file
 
-Data is stored in the browser's localStorage, so it stays on the device you use.
+## Syncing across devices
+The same page is published on claude.ai. Opened from that link while signed in, entries are
+saved to your Claude account and sync between your phone and computer.
+
+Opened directly (this `index.html` from GitHub or your disk), there is no server, so entries are
+saved in that browser only. Use **Download backup** / **Restore backup** to move them.
