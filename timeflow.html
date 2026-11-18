@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>TimeFlow</title>
+    <!-- Tailwind CSS (play CDN, pinned) -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- FontAwesome Icons (SVG + JS build, so it loads as a script) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Single light theme by design: every surface sets its colour explicitly. */
+        :root { --bg: #f8fafc; --fg: #1e293b; color-scheme: light; }
+        html, body { background: var(--bg); color: var(--fg); }
+        @keyframes tf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+        .tf-pulse { animation: tf-pulse 1.2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .tf-pulse { animation: none; } }
+        .modal-open { overflow: hidden; }
+        .tabular { font-variant-numeric: tabular-nums; }
+        .tf-header { top: env(safe-area-inset-top, 0px); }
+        .tf-toast { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+    </style>
+</head>
+<body>
+<div class="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased flex flex-col">
+
+    <!-- Header / Navigation Bar -->
+    <header class="tf-header bg-white border-b border-slate-200 sticky z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-clock text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight">TimeFlow</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Professional Hours & Earnings Logger</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Hourly Rate Settings Button -->
+                <button onclick="openRateModal()" class="inline-flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 sm:px-3.5 py-2 rounded-xl text-sm font-medium transition shadow-sm" title="Hourly rate">
+                    <i class="fa-solid fa-gear text-slate-500"></i>
+                    <span id="rateBadge" class="whitespace-nowrap">Rate: $0/hr</span>
+                </button>
+                <!-- Geofence Locations Settings Button -->
+                <button onclick="openGeofenceModal()" class="inline-flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 sm:px-3.5 py-2 rounded-xl text-sm font-medium transition shadow-sm" title="Geofences">
+                    <i class="fa-solid fa-map-location-dot text-indigo-600"></i>
+                    <span class="hidden md:inline">Geofences</span>
+                </button>
+                <!-- Export CSV Button -->
+                <button onclick="exportToCSV()" class="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition shadow-md hover:shadow-lg" title="Export CSV">
+                    <i class="fa-solid fa-file-arrow-down"></i>
+                    <span class="hidden md:inline">Export CSV</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Dashboard Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Total Hours Card -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Hours Logged</p>
+                    <h3 id="statTotalHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <p class="text-xs text-slate-500 mt-1"><span id="statEntryCount" class="font-medium text-indigo-600">0</span> entries recorded</p>
+                </div>
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-business-time"></i>
+                </div>
+            </div>
+
+            <!-- Total Earnings Card -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Earnings</p>
+                    <h3 id="statTotalEarnings" class="tabular text-3xl font-bold text-emerald-600 mt-1">$0.00</h3>
+                    <p class="text-xs text-slate-500 mt-1">Calculated from rate</p>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+            </div>
+
+            <!-- This Week Card -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">This Week</p>
+                    <h3 id="statWeekHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <p id="statWeekEarnings" class="text-xs text-emerald-600 font-medium mt-1">$0.00 earned</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-calendar-week"></i>
+                </div>
+            </div>
+
+            <!-- This Month Card -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">This Month</p>
+                    <h3 id="statMonthHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <p id="statMonthEarnings" class="text-xs text-emerald-600 font-medium mt-1">$0.00 earned</p>
+                </div>
+                <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live GPS Timer Banner -->
+        <section class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl pointer-events-none">
+                <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="space-y-2 text-center md:text-left">
+                    <div class="inline-flex items-center space-x-2 bg-indigo-500/30 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold tracking-wide text-indigo-200">
+                        <span id="gpsPulseDot" class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+                        <span id="gpsStatusText">GPS Ready</span>
+                    </div>
+                    <h2 class="text-2xl font-bold tracking-tight">Live GPS Time Tracker</h2>
+                    <p class="text-slate-300 text-sm max-w-xl">Start a live timer to record your working hours and automatically capture your precise GPS coordinates and geofenced location.</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:flex-wrap md:flex-nowrap items-center sm:items-end justify-center gap-4 w-full md:w-auto">
+                    <div class="w-full sm:w-44">
+                        <label for="timerProject" class="block text-xs font-medium text-slate-300 mb-1">Select Project</label>
+                        <select id="timerProject" onchange="handleTimerProjectChange()" class="w-full bg-indigo-950/80 border border-indigo-700/50 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="w-full sm:w-44">
+                        <label for="timerLocation" class="block text-xs font-medium text-slate-300 mb-1">Location</label>
+                        <select id="timerLocation" onchange="handleTimerLocationChange()" class="w-full bg-indigo-950/80 border border-indigo-700/50 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <option value="">Auto-detect (GPS)</option>
+                        </select>
+                    </div>
+
+                    <div class="text-center bg-indigo-950/60 border border-indigo-700/40 px-6 py-2 rounded-xl">
+                        <span id="timerDisplay" class="tabular text-3xl font-mono font-bold tracking-wider text-indigo-200">00:00:00</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <button id="startTimerBtn" onclick="toggleGpsTimer()" class="flex-1 sm:flex-initial bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-play"></i>
+                            <span>Start Timer</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active GPS Live Readout -->
+            <div id="liveGpsDetails" class="hidden mt-4 pt-4 border-t border-indigo-700/40 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-indigo-200 relative z-10">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-location-crosshairs text-indigo-400 text-base"></i>
+                    <div>
+                        <p class="text-slate-400 uppercase tracking-wider text-[10px]">Coordinates</p>
+                        <p id="liveCoordsReadout" class="font-mono font-medium text-white">Acquiring GPS...</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-map-pin text-indigo-400 text-base"></i>
+                    <div>
+                        <p class="text-slate-400 uppercase tracking-wider text-[10px]">Detected Geofence</p>
+                        <p id="liveGeofenceReadout" class="font-medium text-white">None (Standard GPS Log)</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-stopwatch text-indigo-400 text-base"></i>
+                    <div>
+                        <p class="text-slate-400 uppercase tracking-wider text-[10px]">Session Earnings</p>
+                        <p id="liveEarningsReadout" class="tabular font-medium text-emerald-400">$0.00</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Actions & Form Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Left Column: Add / Edit Entry Form -->
+            <div id="formCard" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-1 h-fit lg:sticky lg:top-24">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 id="formTitle" class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-plus-circle text-indigo-600"></i>
+                        <span>Log Hours</span>
+                    </h2>
+                    <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-rose-600 hover:text-rose-700 font-medium bg-rose-50 px-2.5 py-1 rounded-lg">Cancel Edit</button>
+                </div>
+
+                <form id="timeEntryForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                    <input type="hidden" id="entryId">
+                    <input type="hidden" id="entryLat">
+                    <input type="hidden" id="entryLng">
+                    <input type="hidden" id="entryLocationName">
+
+                    <!-- Date Field -->
+                    <div>
+                        <label for="entryDate" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date *</label>
+                        <input type="date" id="entryDate" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Project / Client Name -->
+                    <div>
+                        <label for="entryProject" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Project / Client *</label>
+                        <input type="text" id="entryProject" required placeholder="e.g. Acme Corp, Website Redesign" list="projectSuggestions" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        <datalist id="projectSuggestions"></datalist>
+                    </div>
+
+                    <!-- Number of Hours -->
+                    <div>
+                        <label for="entryHours" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hours *</label>
+                        <input type="number" id="entryHours" step="any" min="0.01" max="24" required placeholder="e.g. 3.5" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Category / Task -->
+                    <div>
+                        <label for="entryCategory" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Category / Task</label>
+                        <select id="entryCategory" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                            <option value="Development">Development</option>
+                            <option value="Design">Design</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Consulting">Consulting</option>
+                            <option value="Research">Research</option>
+                            <option value="Testing">Testing</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- GPS Location Capture Status Box -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span class="flex items-center space-x-1.5">
+                                <i class="fa-solid fa-location-crosshairs text-indigo-600"></i>
+                                <span>GPS Coordinates</span>
+                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" id="clearFormGpsBtn" onclick="clearFormLocation()" class="hidden text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 px-2 py-1 rounded-lg transition text-[11px]" title="Remove location" aria-label="Remove location">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                                <button type="button" onclick="captureCurrentLocationForForm()" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition text-[11px]">
+                                    <i class="fa-solid fa-crosshairs mr-1"></i>Capture Now
+                                </button>
+                            </div>
+                        </div>
+                        <p id="formGpsStatus" class="text-xs text-slate-500 italic">No GPS coordinates attached.</p>
+                        <div class="flex items-center gap-2 pt-1">
+                            <label for="formLocation" class="text-[11px] font-medium text-slate-500 whitespace-nowrap">Saved location</label>
+                            <select id="formLocation" onchange="handleFormLocationPick()" class="flex-1 min-w-0 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label for="entryNotes" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes / Description</label>
+                        <textarea id="entryNotes" rows="3" placeholder="Brief summary of work performed..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span id="submitBtnText">Save Entry</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right Column: Entries List & Filters -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 space-y-6 min-w-0">
+
+                <!-- Controls: Filter & Search -->
+                <div class="flex flex-col sm:flex-row gap-4 items-center justify-between pb-4 border-b border-slate-100">
+                    <div class="w-full sm:w-auto flex items-center gap-3 flex-1">
+                        <!-- Search Box -->
+                        <div class="relative flex-1 sm:max-w-xs min-w-0">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-search"></i>
+                            </span>
+                            <input type="text" id="searchInput" oninput="renderTable()" placeholder="Search project or notes..." aria-label="Search entries" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                        </div>
+
+                        <!-- Project Filter -->
+                        <select id="filterProject" onchange="renderTable()" aria-label="Filter by project" class="max-w-[45%] bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                            <option value="">All Projects</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                        <!-- Date Range Filter -->
+                        <select id="filterDateRange" onchange="renderTable()" aria-label="Filter by date" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                            <option value="all">All Time</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+
+                        <button onclick="clearAllData()" title="Clear all logs" aria-label="Clear all logs" class="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Entries Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider text-left">
+                            <tr>
+                                <th class="px-4 py-3">Date</th>
+                                <th class="px-4 py-3">Project / Client</th>
+                                <th class="px-4 py-3">Task</th>
+                                <th class="px-4 py-3">Hours</th>
+                                <th class="px-4 py-3">GPS Location</th>
+                                <th class="px-4 py-3">Notes</th>
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entriesTableBody" class="divide-y divide-slate-100 bg-white text-sm text-slate-700">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                        <tfoot id="entriesTableFoot" class="bg-slate-50 text-sm font-semibold text-slate-700 hidden">
+                            <tr>
+                                <td class="px-4 py-3" colspan="3">Filtered total</td>
+                                <td class="px-4 py-3 whitespace-nowrap tabular" id="footHours">0.00h</td>
+                                <td class="px-4 py-3 text-emerald-600 whitespace-nowrap tabular" colspan="3" id="footEarnings">$0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p id="storageNote" class="text-xs text-slate-400">Entries are saved in this browser on this device. Use Export CSV to keep a copy.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center text-xs text-slate-400 py-6">TimeFlow &middot; Hours &amp; earnings logger</footer>
+</div>
+
+    <!-- Hourly Rate Modal -->
+    <div id="rateModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="rateModalTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeModal('rateModal')"></div>
+        <div class="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-5">
+            <div class="flex items-center justify-between">
+                <h3 id="rateModalTitle" class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-indigo-600"></i> Hourly Rate
+                </h3>
+                <button onclick="closeModal('rateModal')" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="saveRate(event)" class="space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-1">
+                        <label for="currencyInput" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Symbol</label>
+                        <input id="currencyInput" type="text" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="col-span-2">
+                        <label for="rateInput" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Rate per hour</label>
+                        <input id="rateInput" type="number" min="0" step="any" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500">Earnings across the app are calculated as hours &times; this rate.</p>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition">Save Rate</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Geofence Modal -->
+    <div id="geofenceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="geoModalTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeModal('geofenceModal')"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 id="geoModalTitle" class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-map-location-dot text-indigo-600"></i> Geofence Locations
+                </h3>
+                <button onclick="closeModal('geofenceModal')" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-500">Saved locations appear in the Location lists on the timer and the Log Hours form, so you can tag entries without GPS. When a GPS reading falls inside one of these circles, the entry is tagged with that location's name automatically.</p>
+
+            <ul id="geofenceList" class="space-y-2"></ul>
+
+            <form onsubmit="addGeofence(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider">Add location</p>
+                <input id="geoName" type="text" required placeholder="Name, e.g. Head Office" aria-label="Location name" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="grid grid-cols-2 gap-3">
+                    <input id="geoLat" type="number" step="any" min="-90" max="90" required placeholder="Latitude" aria-label="Latitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="geoLng" type="number" step="any" min="-180" max="180" required placeholder="Longitude" aria-label="Longitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label for="geoRadius" class="text-xs text-slate-600 whitespace-nowrap">Radius (m)</label>
+                    <input id="geoRadius" type="number" min="10" step="any" value="150" required class="w-28 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="button" onclick="fillGeofenceFromGps()" class="ml-auto text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-crosshairs mr-1"></i>Use my location
+                    </button>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition">
+                    <i class="fa-solid fa-plus mr-1"></i>Add Geofence
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog (replaces window.confirm, which embedded viewers block) -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="answerConfirm(false)"></div>
+        <div class="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 id="confirmTitle" class="text-base font-bold text-slate-900">Are you sure?</h3>
+            <p id="confirmText" class="text-sm text-slate-600"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmCancel" onclick="answerConfirm(false)" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
+                <button id="confirmOk" onclick="answerConfirm(true)" class="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Project Dialog (replaces window.prompt) -->
+    <div id="projectModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeProjectModal(null)"></div>
+        <form onsubmit="event.preventDefault(); closeProjectModal(document.getElementById('newProjectInput').value)" class="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 id="projectModalTitle" class="text-base font-bold text-slate-900">New project / client</h3>
+            <input id="newProjectInput" type="text" required placeholder="e.g. Acme Corp" aria-label="Project name" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeProjectModal(null)" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition">Add Project</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="tf-toast hidden fixed left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl max-w-[90vw] text-center" role="status" aria-live="polite"></div>
+
+    <script>
+        // ---------------------------------------------------------------
+        // State & storage
+        //   Local mode: everything in localStorage (file opened directly).
+        //   Account mode: on claude.ai, each person's data lives in their
+        //   private db collection data/users/<id> and syncs across devices.
+        // ---------------------------------------------------------------
+        const STORE_KEY = 'timeflow.v1';
+        const state = {
+            entries: [],
+            geofences: [],
+            rate: 0,
+            currency: '$',
+            timer: null,            // { start: ms, project, lat, lng, locationName }
+            lastTimerProject: ''
+        };
+        let mode = 'local';
+        let col = null;             // db collection for this person
+        let dl = null;              // downloads namespace (claude.ai only)
+        const inViewer = !!(window.claude && window.claude.use);
+
+        function settingsData() {
+            return { rate: state.rate, currency: state.currency, timer: state.timer, lastTimerProject: state.lastTimerProject };
+        }
+
+        function loadLocal() {
+            try {
+                const raw = localStorage.getItem(STORE_KEY);
+                if (raw) Object.assign(state, JSON.parse(raw));
+            } catch (e) { /* storage unavailable: start empty */ }
+            if (!Array.isArray(state.entries)) state.entries = [];
+            if (!Array.isArray(state.geofences)) state.geofences = [];
+        }
+
+        function saveLocal() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+        }
+
+        // One write at a time per document.
+        const chains = new Map();
+        function write(docId, fn) {
+            const next = (chains.get(docId) || Promise.resolve()).then(fn).catch(err => {
+                console.error(err);
+                toast('Could not save. Check your connection and try again.');
+            });
+            chains.set(docId, next);
+            return next;
+        }
+        const clean = (o) => JSON.parse(JSON.stringify(o));
+
+        function persistEntry(e) {
+            if (mode === 'db') write('e_' + e.id, () => col.doc('e_' + e.id).set(clean(e)));
+            else saveLocal();
+        }
+        function removeEntryDoc(id) {
+            if (mode === 'db') write('e_' + id, () => col.doc('e_' + id).delete());
+            else saveLocal();
+        }
+        function persistGeofence(g) {
+            if (mode === 'db') write('g_' + g.id, () => col.doc('g_' + g.id).set(clean(g)));
+            else saveLocal();
+        }
+        function removeGeofenceDoc(id) {
+            if (mode === 'db') write('g_' + id, () => col.doc('g_' + id).delete());
+            else saveLocal();
+        }
+        function persistSettings() {
+            if (mode === 'db') write('settings', () => col.doc('settings').set(clean(settingsData())));
+            else saveLocal();
+        }
+
+        async function connect() {
+            if (!inViewer) return;
+            try {
+                const [db, user, downloads] = await Promise.all([
+                    window.claude.use('db'), window.claude.use('user'), window.claude.use('downloads')
+                ]);
+                dl = downloads;
+                const id = user ? await user.id() : null;
+                if (!db || !id) {
+                    $('storageNote').textContent = 'Entries are saved in this browser only. Sign in to claude.ai to sync them across devices.';
+                    return;
+                }
+                col = db.collection('data/users/' + id);
+                mode = 'db';
+                $('storageNote').textContent = 'Connecting to your account…';
+                const slow = setTimeout(() => { $('storageNote').textContent = 'Can’t reach your saved entries yet. Changes will sync when the connection returns.'; }, 10000);
+                let first = true;
+                col.onSnapshot(snap => {
+                    const entries = [], geofences = []; let st = null;
+                    for (const d of snap.docs) {
+                        const v = d.data();
+                        if (d.id === 'settings') st = v;
+                        else if (d.id.startsWith('e_')) entries.push(clean(v));
+                        else if (d.id.startsWith('g_')) geofences.push(clean(v));
+                    }
+                    if (!snap.metadata.fromCache) {
+                        clearTimeout(slow);
+                        $('storageNote').textContent = 'Saved to your Claude account and synced across your devices. Only you can see these entries.';
+                        // First load on this account: move anything kept in this browser into the account.
+                        if (first) {
+                            first = false;
+                            if (!entries.length && !geofences.length && !st && (state.entries.length || state.geofences.length || state.rate)) {
+                                state.entries.forEach(persistEntry);
+                                state.geofences.forEach(persistGeofence);
+                                persistSettings();
+                                return renderAll();
+                            }
+                        }
+                    }
+                    state.entries = entries;
+                    state.geofences = geofences;
+                    state.rate = Number(st?.rate) || 0;
+                    state.currency = st?.currency || '$';
+                    state.timer = st?.timer || null;
+                    state.lastTimerProject = st?.lastTimerProject || '';
+                    renderAll();
+                    if (!$('geofenceModal').classList.contains('hidden')) renderGeofences();
+                }, err => {
+                    clearTimeout(slow);
+                    console.error(err);
+                    $('storageNote').textContent = 'Sync stopped. Reload the page to reconnect.';
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Helpers
+        // ---------------------------------------------------------------
+        const $ = (id) => document.getElementById(id);
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function money(n) {
+            const v = (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return state.currency + v;
+        }
+
+        function toISODate(d) {
+            const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function parseISODate(s) {
+            const [y, m, d] = s.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function startOfWeek(d = new Date()) {
+            const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            x.setDate(x.getDate() - (x.getDay() + 6) % 7); // Monday start
+            return x;
+        }
+
+        function inRange(entry, range) {
+            if (range === 'all') return true;
+            const d = parseISODate(entry.date);
+            const now = new Date();
+            if (range === 'week') {
+                const s = startOfWeek(now), e = new Date(s); e.setDate(e.getDate() + 7);
+                return d >= s && d < e;
+            }
+            if (range === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            return true;
+        }
+
+        function formatDate(iso) {
+            return parseISODate(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function formatCoords(lat, lng) {
+            return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+        }
+
+        const pad = (n) => String(n).padStart(2, '0');
+
+        let toastTimer;
+        function toast(msg) {
+            const t = $('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        const CATEGORY_STYLES = {
+            Development: 'bg-indigo-50 text-indigo-700',
+            Design: 'bg-pink-50 text-pink-700',
+            Meeting: 'bg-amber-50 text-amber-700',
+            Consulting: 'bg-teal-50 text-teal-700',
+            Research: 'bg-sky-50 text-sky-700',
+            Testing: 'bg-lime-50 text-lime-700',
+            Other: 'bg-slate-100 text-slate-700'
+        };
+
+        // ---------------------------------------------------------------
+        // In-page dialogs
+        // ---------------------------------------------------------------
+        const MODALS = ['rateModal', 'geofenceModal', 'confirmModal', 'projectModal'];
+        function openModal(id) { $(id).classList.remove('hidden'); document.body.classList.add('modal-open'); }
+        function closeModal(id) {
+            $(id).classList.add('hidden');
+            if (MODALS.every(m => $(m).classList.contains('hidden'))) document.body.classList.remove('modal-open');
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!$('confirmModal').classList.contains('hidden')) return answerConfirm(false);
+            if (!$('projectModal').classList.contains('hidden')) return closeProjectModal(null);
+            ['rateModal', 'geofenceModal'].forEach(id => { if (!$(id).classList.contains('hidden')) closeModal(id); });
+        });
+
+        let confirmResolve = null;
+        function askConfirm(title, text, okLabel = 'Delete') {
+            $('confirmTitle').textContent = title;
+            $('confirmText').textContent = text;
+            $('confirmOk').textContent = okLabel;
+            openModal('confirmModal');
+            setTimeout(() => $('confirmCancel').focus(), 30);
+            return new Promise(res => { confirmResolve = res; });
+        }
+        function answerConfirm(v) {
+            closeModal('confirmModal');
+            if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(v); }
+        }
+
+        let projectResolve = null;
+        function askProjectName() {
+            $('newProjectInput').value = '';
+            openModal('projectModal');
+            setTimeout(() => $('newProjectInput').focus(), 30);
+            return new Promise(res => { projectResolve = res; });
+        }
+        function closeProjectModal(value) {
+            closeModal('projectModal');
+            if (projectResolve) { const r = projectResolve; projectResolve = null; r(value == null ? null : String(value).trim()); }
+        }
+
+        // ---------------------------------------------------------------
+        // Geolocation & geofences
+        // ---------------------------------------------------------------
+        function haversineMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000, toRad = (x) => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function matchGeofence(lat, lng) {
+            let best = null;
+            for (const g of state.geofences) {
+                const dist = haversineMeters(lat, lng, g.lat, g.lng);
+                if (dist <= g.radius && (!best || dist < best.dist)) best = { ...g, dist };
+            }
+            return best;
+        }
+
+        function getPosition() {
+            return new Promise((resolve, reject) => {
+                if (!('geolocation' in navigator)) return reject(new Error('This browser does not support location.'));
+                navigator.geolocation.getCurrentPosition(
+                    (p) => resolve(p.coords),
+                    (err) => reject(new Error(geoErrorText(err))),
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+                );
+            });
+        }
+
+        function geoErrorText(err) {
+            if (err && err.code === 1) return inViewer
+                ? 'GPS isn’t available inside claude.ai. Pick a saved location instead, or type coordinates.'
+                : 'Location permission denied. Allow location for this page in your browser settings.';
+            if (err && err.code === 2) return 'Location unavailable. Check that location services are on.';
+            if (err && err.code === 3) return 'Location request timed out. Try again outdoors or near a window.';
+            return (err && err.message) || 'Location error.';
+        }
+
+        function locationLabel(entry) {
+            if (entry.locationName) return entry.locationName;
+            if (entry.lat != null && entry.lng != null) return formatCoords(entry.lat, entry.lng);
+            return '';
+        }
+
+        // ---------------------------------------------------------------
+        // Rate modal
+        // ---------------------------------------------------------------
+        function openRateModal() {
+            $('rateInput').value = state.rate || '';
+            $('currencyInput').value = state.currency;
+            openModal('rateModal');
+            setTimeout(() => $('rateInput').focus(), 50);
+        }
+
+        function saveRate(e) {
+            e.preventDefault();
+            const r = parseFloat($('rateInput').value);
+            if (!(r >= 0)) return toast('Enter a rate of 0 or more.');
+            state.rate = r;
+            state.currency = $('currencyInput').value.trim() || '$';
+            persistSettings();
+            closeModal('rateModal');
+            renderAll();
+            toast('Hourly rate updated.');
+        }
+
+        // ---------------------------------------------------------------
+        // Geofence modal
+        // ---------------------------------------------------------------
+        function openGeofenceModal() {
+            renderGeofences();
+            openModal('geofenceModal');
+        }
+
+        function renderGeofences() {
+            const list = $('geofenceList');
+            if (!state.geofences.length) {
+                list.innerHTML = '<li class="text-sm text-slate-400 italic text-center py-3">No geofences yet. Add your office or a client site below.</li>';
+                return;
+            }
+            list.innerHTML = state.geofences.map(g => `
+                <li class="flex items-center justify-between gap-3 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 truncate"><i class="fa-solid fa-map-pin text-indigo-500 mr-1.5"></i>${escapeHtml(g.name)}</p>
+                        <p class="text-xs text-slate-500 font-mono">${formatCoords(g.lat, g.lng)} &middot; ${Math.round(g.radius)} m</p>
+                    </div>
+                    <button onclick="deleteGeofence('${g.id}')" class="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition" aria-label="Delete ${escapeHtml(g.name)}">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </li>`).join('');
+        }
+
+        async function fillGeofenceFromGps() {
+            toast('Getting your location…');
+            try {
+                const c = await getPosition();
+                $('geoLat').value = c.latitude.toFixed(6);
+                $('geoLng').value = c.longitude.toFixed(6);
+                toast(`Location captured (±${Math.round(c.accuracy)} m).`);
+            } catch (err) { toast(err.message); }
+        }
+
+        function addGeofence(e) {
+            e.preventDefault();
+            const g = {
+                id: uid(),
+                name: $('geoName').value.trim(),
+                lat: parseFloat($('geoLat').value),
+                lng: parseFloat($('geoLng').value),
+                radius: parseFloat($('geoRadius').value)
+            };
+            if (!g.name || isNaN(g.lat) || isNaN(g.lng) || !(g.radius > 0)) return toast('Fill in a name, latitude, longitude and radius.');
+            state.geofences.push(g);
+            persistGeofence(g);
+            e.target.reset();
+            $('geoRadius').value = 150;
+            renderGeofences();
+            renderLocationOptions();
+            toast(`Geofence "${g.name}" added.`);
+        }
+
+        async function deleteGeofence(id) {
+            const g = state.geofences.find(x => x.id === id);
+            if (!g || !(await askConfirm('Delete geofence?', `"${g.name}" will be removed. Existing entries keep their location name.`))) return;
+            state.geofences = state.geofences.filter(x => x.id !== id);
+            removeGeofenceDoc(id);
+            renderGeofences();
+            renderLocationOptions();
+        }
+
+        // ---------------------------------------------------------------
+        // Saved-location pickers (work without GPS)
+        // ---------------------------------------------------------------
+        let pendingLocationId = '';   // timer location chosen before the timer starts
+
+        function geofenceOptions(firstLabel) {
+            return `<option value="">${firstLabel}</option>` +
+                state.geofences.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+        }
+
+        function renderLocationOptions() {
+            const known = (id) => id && state.geofences.some(g => g.id === id);
+            const tl = $('timerLocation');
+            tl.innerHTML = geofenceOptions('Auto-detect (GPS)');
+            const want = state.timer ? state.timer.geofenceId : pendingLocationId;
+            tl.value = known(want) ? want : '';
+
+            $('formLocation').innerHTML = geofenceOptions(state.geofences.length ? 'None' : 'None (add under Geofences)');
+            syncFormLocationSelect();
+        }
+
+        function syncFormLocationSelect() {
+            const name = $('entryLocationName').value;
+            const g = name ? state.geofences.find(x => x.name === name) : null;
+            $('formLocation').value = g ? g.id : '';
+        }
+
+        function handleFormLocationPick() {
+            const g = state.geofences.find(x => x.id === $('formLocation').value);
+            if (g) setFormLocation(g.lat, g.lng, g.name);
+            else clearFormLocation();
+        }
+
+        function applyTimerLocation(id) {
+            const t = state.timer;
+            const g = state.geofences.find(x => x.id === id);
+            if (g) {
+                Object.assign(t, { geofenceId: g.id, manual: true, lat: g.lat, lng: g.lng, locationName: g.name });
+            } else {
+                Object.assign(t, { geofenceId: null, manual: false, lat: null, lng: null, locationName: '' });
+            }
+        }
+
+        function handleTimerLocationChange() {
+            const id = $('timerLocation').value;
+            pendingLocationId = id;
+            if (!state.timer) return;
+            applyTimerLocation(id);
+            persistSettings();
+            refreshTimerLocationReadout();
+        }
+
+        function refreshTimerLocationReadout() {
+            const t = state.timer;
+            if (!t) return;
+            if (t.manual) {
+                $('liveCoordsReadout').textContent = formatCoords(t.lat, t.lng);
+                $('liveGeofenceReadout').textContent = `${t.locationName} (picked)`;
+                setGpsStatus(`Tracking · at ${t.locationName}`, 'bg-emerald-400', true);
+            } else if (t.lat != null) {
+                updateLiveLocation(t.lat, t.lng, null);
+            } else {
+                $('liveCoordsReadout').textContent = 'Acquiring GPS...';
+                $('liveGeofenceReadout').textContent = 'None (Standard GPS Log)';
+                setGpsStatus('Acquiring GPS…', 'bg-amber-400', true);
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Live GPS timer
+        // ---------------------------------------------------------------
+        let tickHandle = null;
+        let watchId = null;
+
+        function setGpsStatus(text, dotClass, pulse) {
+            $('gpsStatusText').textContent = text;
+            $('gpsPulseDot').className = `w-2 h-2 rounded-full inline-block ${dotClass}${pulse ? ' tf-pulse' : ''}`;
+        }
+
+        async function handleTimerProjectChange() {
+            if ($('timerProject').value !== '__new__') return;
+            const name = await askProjectName();
+            if (name) {
+                state.lastTimerProject = name;
+                persistSettings();
+                renderProjectOptions(name);
+            } else {
+                renderProjectOptions();
+            }
+        }
+
+        function toggleGpsTimer() {
+            if (state.timer) return stopTimer();
+            const project = $('timerProject').value;
+            if (!project || project === '__new__') return toast('Choose a project first.');
+            state.timer = { start: Date.now(), project, lat: null, lng: null, locationName: '', geofenceId: null, manual: false };
+            applyTimerLocation(pendingLocationId);
+            state.lastTimerProject = project;
+            persistSettings();
+            startTimerUI();
+        }
+
+        function startTimerUI() {
+            const btn = $('startTimerBtn');
+            btn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600', 'text-slate-950');
+            btn.classList.add('bg-rose-500', 'hover:bg-rose-600', 'text-white');
+            btn.innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop &amp; Log</span>';
+            $('timerProject').disabled = true;
+            $('liveGpsDetails').classList.remove('hidden');
+            $('timerDisplay').classList.replace('text-indigo-200', 'text-emerald-300');
+
+            tick();
+            clearInterval(tickHandle);
+            tickHandle = setInterval(tick, 1000);
+            startWatchingPosition();
+            refreshTimerLocationReadout();
+        }
+
+        function startWatchingPosition() {
+            if (watchId != null) return;
+            if (!('geolocation' in navigator)) {
+                setGpsStatus('Timer running · no GPS', 'bg-amber-400', true);
+                $('liveCoordsReadout').textContent = 'Not available';
+                return;
+            }
+            setGpsStatus('Acquiring GPS…', 'bg-amber-400', true);
+            watchId = navigator.geolocation.watchPosition(
+                (p) => {
+                    if (!state.timer || state.timer.manual) return; // a picked location wins over GPS
+                    const { latitude, longitude, accuracy } = p.coords;
+                    // The first fix is the session's logged location; the readout follows you as you move.
+                    if (state.timer.lat == null) {
+                        state.timer.lat = latitude;
+                        state.timer.lng = longitude;
+                        const g = matchGeofence(latitude, longitude);
+                        state.timer.locationName = g ? g.name : '';
+                        persistSettings();
+                    }
+                    updateLiveLocation(latitude, longitude, accuracy);
+                },
+                (err) => {
+                    if (state.timer && state.timer.manual) return;
+                    setGpsStatus(err && err.code === 1 ? 'Timer running · no GPS here' : 'Timer running · GPS unavailable', 'bg-amber-400', true);
+                    if (state.timer && state.timer.lat == null) $('liveCoordsReadout').textContent = 'Not available';
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+            );
+        }
+
+        function updateLiveLocation(lat, lng, accuracy) {
+            $('liveCoordsReadout').textContent = formatCoords(lat, lng) + (accuracy ? ` (±${Math.round(accuracy)}m)` : '');
+            const g = matchGeofence(lat, lng);
+            $('liveGeofenceReadout').textContent = g ? `${g.name} (${Math.round(g.dist)} m)` : 'None (Standard GPS Log)';
+            setGpsStatus(g ? `Tracking · inside ${g.name}` : 'Tracking · GPS locked', 'bg-emerald-400', true);
+        }
+
+        function tick() {
+            if (!state.timer) return;
+            const secs = Math.max(0, Math.floor((Date.now() - state.timer.start) / 1000));
+            $('timerDisplay').textContent = `${pad(Math.floor(secs / 3600))}:${pad(Math.floor(secs / 60) % 60)}:${pad(secs % 60)}`;
+            $('liveEarningsReadout').textContent = money(secs / 3600 * state.rate);
+            document.title = `${$('timerDisplay').textContent} · TimeFlow`;
+        }
+
+        async function stopTimer() {
+            const t = state.timer;
+            pendingLocationId = t.geofenceId || '';   // keep the same place selected for the next session
+            const rounded = Math.round((Date.now() - t.start) / 36000) / 100;
+
+            if (rounded < 0.01) {
+                if (!(await askConfirm('Discard this session?', 'Less than a minute was recorded, so there is nothing to log.', 'Discard'))) return;
+                if (!state.timer) return;
+            } else {
+                const opts = { hour: '2-digit', minute: '2-digit' };
+                const entry = {
+                    id: uid(),
+                    date: toISODate(new Date(t.start)),
+                    project: t.project,
+                    hours: rounded,
+                    category: $('entryCategory').value || 'Development',
+                    lat: t.lat,
+                    lng: t.lng,
+                    locationName: t.locationName || '',
+                    notes: `Live timer ${new Date(t.start).toLocaleTimeString([], opts)}–${new Date().toLocaleTimeString([], opts)}`,
+                    createdAt: Date.now()
+                };
+                state.entries.push(entry);
+                persistEntry(entry);
+                toast(`Logged ${rounded.toFixed(2)}h to ${t.project}.`);
+            }
+
+            state.timer = null;
+            persistSettings();
+            renderAll();
+        }
+
+        function stopTimerUI() {
+            clearInterval(tickHandle);
+            tickHandle = null;
+            if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+            const btn = $('startTimerBtn');
+            btn.classList.remove('bg-rose-500', 'hover:bg-rose-600', 'text-white');
+            btn.classList.add('bg-emerald-500', 'hover:bg-emerald-600', 'text-slate-950');
+            btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Start Timer</span>';
+            $('timerProject').disabled = false;
+            $('liveGpsDetails').classList.add('hidden');
+            $('timerDisplay').textContent = '00:00:00';
+            $('timerDisplay').classList.replace('text-emerald-300', 'text-indigo-200');
+            $('liveGeofenceReadout').textContent = 'None (Standard GPS Log)';
+            $('liveEarningsReadout').textContent = money(0);
+            setGpsStatus('GPS Ready', 'bg-slate-400', false);
+            document.title = 'TimeFlow';
+        }
+
+        // Keep the timer UI in step with state (also when another device starts or stops it).
+        function syncTimerUI() {
+            if (state.timer && !tickHandle) startTimerUI();
+            else if (!state.timer && tickHandle) stopTimerUI();
+            else if (state.timer) { tick(); refreshTimerLocationReadout(); }
+        }
+
+        // ---------------------------------------------------------------
+        // Entry form
+        // ---------------------------------------------------------------
+        async function captureCurrentLocationForForm() {
+            const status = $('formGpsStatus');
+            status.className = 'text-xs text-indigo-600 italic';
+            status.textContent = 'Acquiring GPS position…';
+            try {
+                const c = await getPosition();
+                const g = matchGeofence(c.latitude, c.longitude);
+                setFormLocation(c.latitude, c.longitude, g ? g.name : '', c.accuracy);
+            } catch (err) {
+                status.className = 'text-xs text-rose-600';
+                status.textContent = err.message;
+            }
+        }
+
+        function setFormLocation(lat, lng, name, accuracy) {
+            $('entryLat').value = lat ?? '';
+            $('entryLng').value = lng ?? '';
+            $('entryLocationName').value = name || '';
+            const status = $('formGpsStatus');
+            if (lat == null || lat === '') {
+                status.className = 'text-xs text-slate-500 italic';
+                status.textContent = 'No GPS coordinates attached.';
+                $('clearFormGpsBtn').classList.add('hidden');
+                syncFormLocationSelect();
+                return;
+            }
+            status.className = 'text-xs text-emerald-700 font-medium';
+            status.innerHTML = (name ? `<i class="fa-solid fa-map-pin mr-1"></i>${escapeHtml(name)} · ` : '') +
+                `<span class="font-mono">${formatCoords(lat, lng)}</span>` +
+                (accuracy ? ` <span class="text-slate-400">(±${Math.round(accuracy)}m)</span>` : '');
+            $('clearFormGpsBtn').classList.remove('hidden');
+            syncFormLocationSelect();
+        }
+
+        function clearFormLocation() { setFormLocation(null, null, ''); }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const hours = parseFloat($('entryHours').value);
+            if (!(hours > 0 && hours <= 24)) return toast('Hours must be more than 0 and at most 24.');
+
+            const latRaw = $('entryLat').value, lngRaw = $('entryLng').value;
+            const data = {
+                date: $('entryDate').value,
+                project: $('entryProject').value.trim(),
+                hours: Math.round(hours * 100) / 100,
+                category: $('entryCategory').value,
+                lat: latRaw === '' ? null : parseFloat(latRaw),
+                lng: lngRaw === '' ? null : parseFloat(lngRaw),
+                locationName: $('entryLocationName').value,
+                notes: $('entryNotes').value.trim()
+            };
+            if (!data.date || !data.project) return toast('Date and project are required.');
+
+            const id = $('entryId').value;
+            const i = id ? state.entries.findIndex(x => x.id === id) : -1;
+            let entry;
+            if (i > -1) {
+                entry = state.entries[i] = { ...state.entries[i], ...data };
+                toast('Entry updated.');
+            } else {
+                entry = { id: uid(), createdAt: Date.now(), ...data };
+                state.entries.push(entry);
+                toast('Entry saved.');
+            }
+            persistEntry(entry);
+            resetForm();
+            renderAll();
+        }
+
+        function resetForm() {
+            $('timeEntryForm').reset();
+            $('entryId').value = '';
+            $('entryDate').value = toISODate(new Date());
+            clearFormLocation();
+            $('formTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-indigo-600"></i><span>Log Hours</span>';
+            $('submitBtnText').textContent = 'Save Entry';
+            $('cancelEditBtn').classList.add('hidden');
+            $('formCard').classList.remove('ring-2', 'ring-indigo-400');
+        }
+
+        function editEntry(id) {
+            const en = state.entries.find(x => x.id === id);
+            if (!en) return;
+            $('entryId').value = en.id;
+            $('entryDate').value = en.date;
+            $('entryProject').value = en.project;
+            $('entryHours').value = en.hours;
+            $('entryCategory').value = en.category || 'Other';
+            $('entryNotes').value = en.notes || '';
+            setFormLocation(en.lat, en.lng, en.locationName);
+            $('formTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-500"></i><span>Edit Entry</span>';
+            $('submitBtnText').textContent = 'Update Entry';
+            $('cancelEditBtn').classList.remove('hidden');
+            $('formCard').classList.add('ring-2', 'ring-indigo-400');
+            $('formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            $('entryHours').focus({ preventScroll: true });
+        }
+
+        async function deleteEntry(id) {
+            const en = state.entries.find(x => x.id === id);
+            if (!en) return;
+            if (!(await askConfirm('Delete entry?', `${en.hours}h on ${formatDate(en.date)} for "${en.project}" will be removed.`))) return;
+            state.entries = state.entries.filter(x => x.id !== id);
+            removeEntryDoc(id);
+            if ($('entryId').value === id) resetForm();
+            renderAll();
+            toast('Entry deleted.');
+        }
+
+        async function clearAllData() {
+            if (!state.entries.length) return toast('There are no entries to clear.');
+            const n = state.entries.length;
+            if (!(await askConfirm(`Delete all ${n} entries?`, 'This cannot be undone. Your rate and geofences are kept.', 'Delete all'))) return;
+            const ids = state.entries.map(e => e.id);
+            state.entries = [];
+            if (mode === 'db') ids.forEach(removeEntryDoc); else saveLocal();
+            resetForm();
+            renderAll();
+            toast('All entries cleared.');
+        }
+
+        // ---------------------------------------------------------------
+        // Rendering
+        // ---------------------------------------------------------------
+        function projectNames() {
+            return [...new Set(state.entries.map(e => e.project).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        }
+
+        function renderProjectOptions(select) {
+            const names = projectNames();
+            if (state.lastTimerProject && !names.includes(state.lastTimerProject)) names.unshift(state.lastTimerProject);
+            if (state.timer && !names.includes(state.timer.project)) names.unshift(state.timer.project);
+            if (!names.length) names.push('General');
+
+            const tp = $('timerProject');
+            const want = (state.timer && state.timer.project) || select || (tp.value !== '__new__' && tp.value) || state.lastTimerProject || names[0];
+            tp.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('') +
+                '<option value="__new__">+ New project…</option>';
+            tp.value = names.includes(want) ? want : names[0];
+
+            const known = projectNames();
+            $('projectSuggestions').innerHTML = known.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+
+            const fp = $('filterProject');
+            const cur = fp.value;
+            fp.innerHTML = '<option value="">All Projects</option>' + known.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            fp.value = known.includes(cur) ? cur : '';
+        }
+
+        function renderStats() {
+            const sum = (arr) => arr.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+            const total = sum(state.entries);
+            const week = sum(state.entries.filter(e => inRange(e, 'week')));
+            const month = sum(state.entries.filter(e => inRange(e, 'month')));
+
+            $('statTotalHours').textContent = total.toFixed(1) + 'h';
+            $('statEntryCount').textContent = state.entries.length;
+            $('statTotalEarnings').textContent = money(total * state.rate);
+            $('statWeekHours').textContent = week.toFixed(1) + 'h';
+            $('statWeekEarnings').textContent = money(week * state.rate) + ' earned';
+            $('statMonthHours').textContent = month.toFixed(1) + 'h';
+            $('statMonthEarnings').textContent = money(month * state.rate) + ' earned';
+            $('rateBadge').textContent = `Rate: ${state.currency}${Number(state.rate).toLocaleString()}/hr`;
+        }
+
+        function filteredEntries() {
+            const q = $('searchInput').value.trim().toLowerCase();
+            const proj = $('filterProject').value;
+            const range = $('filterDateRange').value;
+            return state.entries
+                .filter(e => inRange(e, range))
+                .filter(e => !proj || e.project === proj)
+                .filter(e => !q || [e.project, e.notes, e.category, e.locationName].some(v => (v || '').toLowerCase().includes(q)))
+                .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
+        }
+
+        function renderTable() {
+            const rows = filteredEntries();
+            const body = $('entriesTableBody');
+
+            if (!rows.length) {
+                const empty = !state.entries.length;
+                body.innerHTML = `
+                    <tr><td colspan="7" class="px-4 py-14 text-center">
+                        <div class="text-slate-300 text-4xl mb-3"><i class="fa-solid ${empty ? 'fa-hourglass-start' : 'fa-filter-circle-xmark'}"></i></div>
+                        <p class="font-semibold text-slate-600">${empty ? 'No hours logged yet' : 'No entries match your filters'}</p>
+                        <p class="text-xs text-slate-400 mt-1">${empty ? 'Use the form or start the live timer to add your first entry.' : 'Try a different search, project or date range.'}</p>
+                    </td></tr>`;
+                $('entriesTableFoot').classList.add('hidden');
+                return;
+            }
+
+            body.innerHTML = rows.map(e => {
+                const loc = locationLabel(e);
+                const hasCoords = e.lat != null && e.lng != null;
+                const mapLink = hasCoords ? `https://www.openstreetmap.org/?mlat=${e.lat}&mlon=${e.lng}#map=17/${e.lat}/${e.lng}` : '';
+                const inner = `<i class="fa-solid ${e.locationName ? 'fa-map-pin' : 'fa-location-dot'}"></i>${escapeHtml(loc)}`;
+                const locCell = !loc ? '<span class="text-slate-300">—</span>'
+                    : hasCoords
+                        ? `<a href="${mapLink}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 ${e.locationName ? 'font-medium' : 'font-mono text-xs'}" title="${formatCoords(e.lat, e.lng)}">${inner}</a>`
+                        : `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">${inner}</span>`;
+                const cat = e.category || 'Other';
+                return `
+                <tr class="hover:bg-slate-50/70 transition">
+                    <td class="px-4 py-3 whitespace-nowrap text-slate-600">${formatDate(e.date)}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-900">${escapeHtml(e.project)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap"><span class="text-xs font-medium px-2 py-1 rounded-lg ${CATEGORY_STYLES[cat] || CATEGORY_STYLES.Other}">${escapeHtml(cat)}</span></td>
+                    <td class="px-4 py-3 whitespace-nowrap tabular">
+                        <span class="font-semibold text-slate-900">${Number(e.hours).toFixed(2)}h</span>
+                        ${state.rate ? `<span class="block text-xs text-emerald-600">${money(e.hours * state.rate)}</span>` : ''}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">${locCell}</td>
+                    <td class="px-4 py-3 max-w-[16rem]"><p class="truncate text-slate-500" title="${escapeHtml(e.notes)}">${escapeHtml(e.notes) || '<span class="text-slate-300">—</span>'}</p></td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                        <button onclick="editEntry('${e.id}')" class="text-slate-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition" title="Edit" aria-label="Edit entry"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="deleteEntry('${e.id}')" class="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition" title="Delete" aria-label="Delete entry"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const hrs = rows.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+            $('footHours').textContent = hrs.toFixed(2) + 'h';
+            $('footEarnings').textContent = money(hrs * state.rate);
+            $('entriesTableFoot').classList.remove('hidden');
+        }
+
+        function renderAll() {
+            renderProjectOptions();
+            renderLocationOptions();
+            renderStats();
+            renderTable();
+            syncTimerUI();
+        }
+
+        // ---------------------------------------------------------------
+        // CSV export (the rows currently shown by the filters)
+        // ---------------------------------------------------------------
+        async function exportToCSV() {
+            const rows = filteredEntries();
+            if (!rows.length) return toast('No entries to export.');
+            const cell = (v) => {
+                const s = String(v ?? '');
+                return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            };
+            const header = ['Date', 'Project/Client', 'Category', 'Hours', `Rate (${state.currency}/hr)`, `Earnings (${state.currency})`, 'Location', 'Latitude', 'Longitude', 'Notes'];
+            const lines = [header.map(cell).join(',')];
+            rows.slice().reverse().forEach(e => {
+                lines.push([
+                    e.date, e.project, e.category, Number(e.hours).toFixed(2), state.rate,
+                    (e.hours * state.rate).toFixed(2), e.locationName || '',
+                    e.lat ?? '', e.lng ?? '', e.notes || ''
+                ].map(cell).join(','));
+            });
+            const total = rows.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+            lines.push(['TOTAL', '', '', total.toFixed(2), '', (total * state.rate).toFixed(2), '', '', '', ''].map(cell).join(','));
+
+            const csv = '﻿' + lines.join('\r\n');
+            const filename = `timeflow-${toISODate(new Date())}.csv`;
+            const label = `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`;
+
+            if (inViewer) {
+                // Inside claude.ai, files are offered through the viewer's save prompt.
+                if (!dl) dl = await window.claude.use('downloads');
+                if (!dl) return toast('Downloads aren’t available in this view.');
+                try {
+                    await dl.save({ filename, data: new Blob([csv], { type: 'text/csv' }) });
+                    toast(`Exported ${label}.`);
+                } catch (err) {
+                    if (err && err.code === 'declined') return;
+                    toast(err && err.code === 'rate_limited' ? 'A save prompt is already open.' : 'Could not export the file.');
+                }
+                return;
+            }
+
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast(`Exported ${label}.`);
+        }
+
+        // ---------------------------------------------------------------
+        // Init
+        // ---------------------------------------------------------------
+        loadLocal();
+        resetForm();
+        renderAll();
+        connect();
+    </script>
+</body>
+</html>
