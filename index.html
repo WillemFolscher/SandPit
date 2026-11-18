@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work Hours Clock</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1b1f24; --muted: #6b7280;
+    --border: #e3e6ea; --accent: #2563eb; --accent-text: #fff;
+    --green: #16a34a; --red: #dc2626; --amber: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --card: #181c22; --text: #e6e8eb; --muted: #9aa3ad;
+      --border: #2a3038; --accent: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.35rem; margin: 0 0 16px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .dot.in { background: var(--green); } .dot.break { background: var(--amber); }
+  .timer { font-variant-numeric: tabular-nums; font-size: 2.6rem; font-weight: 650; margin: 6px 0 14px; letter-spacing: .5px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  button {
+    font: inherit; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 8px; padding: 9px 14px; cursor: pointer;
+  }
+  button:hover { filter: brightness(.97); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.danger { color: var(--red); }
+  button.big { padding: 12px 22px; font-size: 1.05rem; }
+  button:disabled { opacity: .45; cursor: default; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat .label { color: var(--muted); font-size: .8rem; }
+  .stat .value { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .bar > div { height: 100%; background: var(--accent); }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; width: 100%;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+  td.num, th.num { text-align: right; }
+  .day-head td { background: var(--bg); font-weight: 600; }
+  .note { color: var(--muted); font-size: .85rem; }
+  .actions button { padding: 4px 8px; font-size: .8rem; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; }
+  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); width: min(440px, calc(100% - 32px)); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Work Hours Clock</h1>
+
+  <!-- Clock in / out -->
+  <section class="card">
+    <div class="status"><span id="dot" class="dot"></span><span id="statusText">Clocked out</span></div>
+    <div class="timer" id="timer">0:00:00</div>
+    <div class="row">
+      <button id="clockBtn" class="primary big">Clock in</button>
+      <button id="breakBtn" class="big" disabled>Start break</button>
+    </div>
+    <div style="margin-top:12px">
+      <input id="noteInput" placeholder="Note for this shift (optional)">
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="card">
+    <h2>Summary</h2>
+    <div class="stats">
+      <div class="stat"><div class="label">Today</div><div class="value" id="sToday">0:00</div>
+        <div class="bar"><div id="barToday" style="width:0"></div></div></div>
+      <div class="stat"><div class="label">This week</div><div class="value" id="sWeek">0:00</div>
+        <div class="bar"><div id="barWeek" style="width:0"></div></div></div>
+      <div class="stat"><div class="label">This month</div><div class="value" id="sMonth">0:00</div></div>
+      <div class="stat"><div class="label">Week balance (vs target)</div><div class="value" id="sOver">0:00</div></div>
+      <div class="stat" id="earnStat"><div class="label">Week earnings</div><div class="value" id="sEarn">–</div></div>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section class="card">
+    <div class="toolbar">
+      <h2 style="margin:0">History</h2>
+      <div class="row">
+        <select id="rangeSel" style="width:auto">
+          <option value="week">This week</option>
+          <option value="lastweek">Last week</option>
+          <option value="month">This month</option>
+          <option value="all">All</option>
+        </select>
+        <button id="addBtn">+ Add entry</button>
+        <button id="csvBtn">Export CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>In</th><th>Out</th><th class="num">Break</th><th class="num">Worked</th><th></th></tr></thead>
+        <tbody id="hist"></tbody>
+      </table>
+    </div>
+    <p class="note" id="rangeTotal"></p>
+  </section>
+
+  <!-- Settings -->
+  <section class="card">
+    <h2>Settings</h2>
+    <div class="grid">
+      <div><label for="setDaily">Daily target (hours)</label><input id="setDaily" type="number" min="0" step="0.25"></div>
+      <div><label for="setWeekly">Weekly target (hours)</label><input id="setWeekly" type="number" min="0" step="0.25"></div>
+      <div><label for="setRate">Hourly rate (optional)</label><input id="setRate" type="number" min="0" step="0.01"></div>
+      <div><label for="setWeekStart">Week starts on</label>
+        <select id="setWeekStart"><option value="1">Monday</option><option value="0">Sunday</option></select></div>
+    </div>
+    <div class="row">
+      <button id="backupBtn">Download backup</button>
+      <button id="restoreBtn">Restore backup</button>
+      <input id="restoreFile" type="file" accept="application/json" hidden>
+      <button id="wipeBtn" class="danger">Delete all data</button>
+    </div>
+    <p class="note">Data is saved in this browser only. Download a backup to keep it safe or move it to another device.</p>
+  </section>
+</main>
+
+<dialog id="editDlg">
+  <form method="dialog" id="editForm">
+    <h2 id="editTitle">Edit entry</h2>
+    <div class="grid">
+      <div><label for="eIn">Clock in</label><input id="eIn" type="datetime-local" required></div>
+      <div><label for="eOut">Clock out</label><input id="eOut" type="datetime-local"></div>
+      <div><label for="eBreak">Break (minutes)</label><input id="eBreak" type="number" min="0" step="1"></div>
+    </div>
+    <div style="margin-bottom:12px"><label for="eNote">Note</label><input id="eNote"></div>
+    <p class="note neg" id="eErr"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="save" class="primary" id="eSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const KEY = 'workHoursClock.v1';
+  const MIN = 60000, HOUR = 3600000;
+
+  // ---------- storage ----------
+  const defaults = () => ({ shifts: [], settings: { daily: 8, weekly: 40, rate: 0, weekStart: 1 } });
+  function load() {
+    try {
+      const d = JSON.parse(localStorage.getItem(KEY));
+      if (d && Array.isArray(d.shifts)) return { ...defaults(), ...d, settings: { ...defaults().settings, ...d.settings } };
+    } catch (e) {}
+    return defaults();
+  }
+  let data = load();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} render(); }
+
+  // Shift: { id, start, end|null, breaks: [{start, end|null}], breakMin (manual extra), note }
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const active = () => data.shifts.find(s => s.end == null);
+  const onBreak = s => s && s.breaks.some(b => b.end == null);
+
+  function breakMs(s, now = Date.now()) {
+    let ms = (s.breakMin || 0) * MIN;
+    for (const b of s.breaks) ms += (b.end ?? now) - b.start;
+    return ms;
+  }
+  function workedMs(s, now = Date.now()) {
+    return Math.max(0, (s.end ?? now) - s.start - breakMs(s, now));
+  }
+  // Worked time of a shift that falls inside [a, b). Breaks are spread proportionally.
+  function workedIn(s, a, b, now = Date.now()) {
+    const end = s.end ?? now;
+    const span = end - s.start;
+    if (span <= 0) return 0;
+    const overlap = Math.max(0, Math.min(end, b) - Math.max(s.start, a));
+    return workedMs(s, now) * (overlap / span);
+  }
+
+  // ---------- dates ----------
+  const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  function startOfWeek(d) {
+    const x = startOfDay(d);
+    const diff = (x.getDay() - data.settings.weekStart + 7) % 7;
+    return addDays(x, -diff);
+  }
+  const startOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
+  function range(kind) {
+    const now = new Date();
+    if (kind === 'week') { const a = startOfWeek(now); return [a, addDays(a, 7)]; }
+    if (kind === 'lastweek') { const a = addDays(startOfWeek(now), -7); return [a, addDays(a, 7)]; }
+    if (kind === 'month') { const a = startOfMonth(now); return [a, new Date(a.getFullYear(), a.getMonth() + 1, 1)]; }
+    return [new Date(0), new Date(8.64e15)];
+  }
+  const total = (a, b) => data.shifts.reduce((t, s) => t + workedIn(s, +a, +b), 0);
+
+  // ---------- formatting ----------
+  const pad = n => String(n).padStart(2, '0');
+  function hm(ms, signed = false) {
+    const neg = ms < 0; ms = Math.abs(ms);
+    const m = Math.floor(ms / MIN);
+    return (neg ? '−' : signed ? '+' : '') + Math.floor(m / 60) + ':' + pad(m % 60);
+  }
+  function hms(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 3600) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); }
+  const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+  const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtTime = t => timeFmt.format(new Date(t));
+  const toLocalInput = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const money = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ---------- elements ----------
+  const $ = id => document.getElementById(id);
+  const clockBtn = $('clockBtn'), breakBtn = $('breakBtn'), noteInput = $('noteInput');
+
+  // ---------- actions ----------
+  clockBtn.onclick = () => {
+    const s = active(), now = Date.now();
+    if (s) {
+      for (const b of s.breaks) if (b.end == null) b.end = now;
+      s.end = now;
+      s.note = noteInput.value.trim();
+      noteInput.value = '';
+    } else {
+      data.shifts.push({ id: uid(), start: now, end: null, breaks: [], breakMin: 0, note: noteInput.value.trim() });
+    }
+    save();
+  };
+  breakBtn.onclick = () => {
+    const s = active(); if (!s) return;
+    const now = Date.now(), open = s.breaks.find(b => b.end == null);
+    if (open) open.end = now; else s.breaks.push({ start: now, end: null });
+    save();
+  };
+  noteInput.oninput = () => { const s = active(); if (s) { s.note = noteInput.value; try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} } };
+
+  // Settings
+  const setMap = { setDaily: 'daily', setWeekly: 'weekly', setRate: 'rate', setWeekStart: 'weekStart' };
+  for (const [id, k] of Object.entries(setMap)) {
+    $(id).onchange = e => { const v = parseFloat(e.target.value); data.settings[k] = isNaN(v) ? 0 : v; save(); };
+  }
+  $('rangeSel').onchange = render;
+
+  // Edit dialog
+  const dlg = $('editDlg'); let editing = null;
+  function openEdit(s) {
+    editing = s;
+    $('editTitle').textContent = s ? 'Edit entry' : 'Add entry';
+    const now = Date.now();
+    $('eIn').value = toLocalInput(s ? s.start : now - 8 * HOUR);
+    $('eOut').value = s ? (s.end ? toLocalInput(s.end) : '') : toLocalInput(now);
+    $('eOut').disabled = !!(s && s.end == null);
+    $('eBreak').value = s ? Math.round(breakMs(s) / MIN) : 30;
+    $('eNote').value = s ? s.note || '' : '';
+    $('eErr').textContent = '';
+    dlg.showModal();
+  }
+  $('addBtn').onclick = () => openEdit(null);
+  $('editForm').addEventListener('submit', e => {
+    if (e.submitter && e.submitter.value !== 'save') return;
+    const start = new Date($('eIn').value).getTime();
+    const isActive = editing && editing.end == null;
+    const end = isActive ? null : ($('eOut').value ? new Date($('eOut').value).getTime() : NaN);
+    const brk = Math.max(0, parseInt($('eBreak').value, 10) || 0);
+    const err = isNaN(start) ? 'Enter a valid clock-in time.'
+      : (!isActive && isNaN(end)) ? 'Enter a valid clock-out time.'
+      : (!isActive && end <= start) ? 'Clock out must be after clock in.'
+      : (!isActive && brk * MIN >= end - start) ? 'Break is longer than the shift.' : '';
+    if (err) { e.preventDefault(); $('eErr').textContent = err; return; }
+    const s = editing || { id: uid(), breaks: [] };
+    s.start = start; s.end = end;
+    // Collapse timed breaks into a minutes value (keep an open break running if active)
+    const open = isActive ? s.breaks.find(b => b.end == null) : null;
+    const openMs = open ? Date.now() - open.start : 0;
+    s.breaks = open ? [open] : [];
+    s.breakMin = Math.max(0, brk - openMs / MIN);
+    s.note = $('eNote').value.trim();
+    if (!editing) data.shifts.push(s);
+    save();
+  });
+
+  $('hist').onclick = e => {
+    const btn = e.target.closest('button[data-act]'); if (!btn) return;
+    const s = data.shifts.find(x => x.id === btn.dataset.id); if (!s) return;
+    if (btn.dataset.act === 'edit') openEdit(s);
+    if (btn.dataset.act === 'del' && confirm('Delete this entry?')) {
+      data.shifts = data.shifts.filter(x => x !== s); save();
+    }
+  };
+
+  // Export / backup
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('csvBtn').onclick = () => {
+    const [a, b] = range($('rangeSel').value);
+    const rows = [['Date', 'Clock in', 'Clock out', 'Break (min)', 'Worked (hours)', 'Note']];
+    for (const s of shiftsIn(a, b)) {
+      const d = new Date(s.start);
+      rows.push([`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`, fmtTime(s.start),
+        s.end ? fmtTime(s.end) : '', Math.round(breakMs(s) / MIN), (workedMs(s) / HOUR).toFixed(2), s.note || '']);
+    }
+    const csv = rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')).join('\n');
+    download(`work-hours-${$('rangeSel').value}.csv`, csv, 'text/csv');
+  };
+  $('backupBtn').onclick = () => download('work-hours-backup.json', JSON.stringify(data, null, 2), 'application/json');
+  $('restoreBtn').onclick = () => $('restoreFile').click();
+  $('restoreFile').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!Array.isArray(d.shifts)) throw new Error();
+      if (confirm(`Replace current data with ${d.shifts.length} entries from backup?`)) {
+        data = { ...defaults(), ...d, settings: { ...defaults().settings, ...d.settings } }; save();
+      }
+    } catch { alert('That file is not a valid backup.'); }
+    e.target.value = '';
+  };
+  $('wipeBtn').onclick = () => {
+    if (confirm('Delete ALL entries and settings? This cannot be undone.')) { data = defaults(); save(); }
+  };
+
+  // ---------- render ----------
+  const shiftsIn = (a, b) => data.shifts
+    .filter(s => s.start < +b && (s.end ?? Date.now()) > +a)
+    .sort((x, y) => x.start - y.start);
+
+  function renderLive() {
+    const s = active(), now = Date.now(), brk = onBreak(s);
+    $('dot').className = 'dot' + (s ? (brk ? ' break' : ' in') : '');
+    $('statusText').textContent = s
+      ? (brk ? 'On break' : 'Clocked in') + ' since ' + fmtTime(brk ? s.breaks.find(b => b.end == null).start : s.start)
+      : 'Clocked out';
+    $('timer').textContent = hms(s ? workedMs(s, now) : 0);
+    clockBtn.textContent = s ? 'Clock out' : 'Clock in';
+    breakBtn.disabled = !s;
+    breakBtn.textContent = brk ? 'End break' : 'Start break';
+
+    const today = startOfDay(now), wk = startOfWeek(now), mo = startOfMonth(new Date(now));
+    const tDay = total(today, addDays(today, 1));
+    const tWeek = total(wk, addDays(wk, 7));
+    const tMonth = total(mo, new Date(mo.getFullYear(), mo.getMonth() + 1, 1));
+    const { daily, weekly, rate } = data.settings;
+    $('sToday').textContent = hm(tDay) + (daily ? ` / ${daily}h` : '');
+    $('sWeek').textContent = hm(tWeek) + (weekly ? ` / ${weekly}h` : '');
+    $('sMonth').textContent = hm(tMonth);
+    $('barToday').style.width = daily ? Math.min(100, tDay / (daily * HOUR) * 100) + '%' : '0';
+    $('barWeek').style.width = weekly ? Math.min(100, tWeek / (weekly * HOUR) * 100) + '%' : '0';
+    const over = tWeek - weekly * HOUR;
+    $('sOver').textContent = weekly ? hm(over, true) : '–';
+    $('sOver').className = 'value ' + (weekly ? (over >= 0 ? 'pos' : 'neg') : '');
+    $('earnStat').hidden = !rate;
+    $('sEarn').textContent = money(tWeek / HOUR * rate);
+  }
+
+  function render() {
+    for (const [id, k] of Object.entries(setMap)) if (document.activeElement !== $(id)) $(id).value = data.settings[k] || (k === 'weekStart' ? 0 : '');
+    const s = active();
+    if (s && document.activeElement !== noteInput) noteInput.value = s.note || '';
+
+    const [a, b] = range($('rangeSel').value);
+    const list = shiftsIn(a, b);
+    const byDay = new Map();
+    for (const sh of list) {
+      const k = startOfDay(sh.start).getTime();
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(sh);
+    }
+    let html = '';
+    for (const [day, shifts] of [...byDay].reverse()) {
+      const dayTotal = shifts.reduce((t, sh) => t + workedMs(sh), 0);
+      html += `<tr class="day-head"><td colspan="3">${dayFmt.format(new Date(day))}</td><td class="num">${hm(dayTotal)}</td><td></td></tr>`;
+      for (const sh of [...shifts].reverse()) {
+        const multiDay = sh.end && startOfDay(sh.end).getTime() !== day;
+        html += `<tr>
+          <td>${fmtTime(sh.start)}${sh.note ? `<div class="note">${esc(sh.note)}</div>` : ''}</td>
+          <td>${sh.end ? fmtTime(sh.end) + (multiDay ? ' <span class="muted">(+1)</span>' : '') : '<span class="pos">running</span>'}</td>
+          <td class="num">${hm(breakMs(sh))}</td>
+          <td class="num">${hm(workedMs(sh))}</td>
+          <td class="num actions"><button data-act="edit" data-id="${sh.id}">Edit</button> <button data-act="del" data-id="${sh.id}" class="danger">✕</button></td>
+        </tr>`;
+      }
+    }
+    $('hist').innerHTML = html || `<tr><td colspan="5" class="muted">No entries in this period.</td></tr>`;
+    const sum = list.reduce((t, sh) => t + workedMs(sh), 0);
+    $('rangeTotal').textContent = list.length ? `${list.length} shift${list.length > 1 ? 's' : ''} · ${hm(sum)} worked (${(sum / HOUR).toFixed(2)} h)` : '';
+    renderLive();
+  }
+
+  render();
+  setInterval(() => { renderLive(); }, 1000);
+  setInterval(() => { if (active()) render(); }, 30000);
+  window.addEventListener('storage', e => { if (e.key === KEY) { data = load(); render(); } });
+})();
+</script>
+</body>
+</html>
