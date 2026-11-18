@@ -138,11 +138,18 @@
                     <p class="text-slate-300 text-sm max-w-xl">Start a live timer to record your working hours and automatically capture your precise GPS coordinates and geofenced location.</p>
                 </div>
 
-                <div class="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <div class="w-full sm:w-48">
+                <div class="flex flex-col sm:flex-row sm:flex-wrap md:flex-nowrap items-center sm:items-end justify-center gap-4 w-full md:w-auto">
+                    <div class="w-full sm:w-44">
                         <label for="timerProject" class="block text-xs font-medium text-slate-300 mb-1">Select Project</label>
                         <select id="timerProject" onchange="handleTimerProjectChange()" class="w-full bg-indigo-950/80 border border-indigo-700/50 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
                             <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="w-full sm:w-44">
+                        <label for="timerLocation" class="block text-xs font-medium text-slate-300 mb-1">Location</label>
+                        <select id="timerLocation" onchange="handleTimerLocationChange()" class="w-full bg-indigo-950/80 border border-indigo-700/50 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <option value="">Auto-detect (GPS)</option>
                         </select>
                     </div>
 
@@ -254,6 +261,12 @@
                             </div>
                         </div>
                         <p id="formGpsStatus" class="text-xs text-slate-500 italic">No GPS coordinates attached.</p>
+                        <div class="flex items-center gap-2 pt-1">
+                            <label for="formLocation" class="text-[11px] font-medium text-slate-500 whitespace-nowrap">Saved location</label>
+                            <select id="formLocation" onchange="handleFormLocationPick()" class="flex-1 min-w-0 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">None</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Notes -->
@@ -375,7 +388,7 @@
                 </h3>
                 <button onclick="closeModal('geofenceModal')" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <p class="text-xs text-slate-500">When a GPS reading falls inside one of these circles, the entry is tagged with that location's name instead of raw coordinates.</p>
+            <p class="text-xs text-slate-500">Saved locations appear in the Location lists on the timer and the Log Hours form, so you can tag entries without GPS. When a GPS reading falls inside one of these circles, the entry is tagged with that location's name automatically.</p>
 
             <ul id="geofenceList" class="space-y-2"></ul>
 
@@ -703,7 +716,7 @@
 
         function geoErrorText(err) {
             if (err && err.code === 1) return inViewer
-                ? 'Location isn’t available inside claude.ai. Enter coordinates by hand, or open timeflow.html directly in your browser for GPS.'
+                ? 'GPS isn’t available inside claude.ai. Pick a saved location instead, or type coordinates.'
                 : 'Location permission denied. Allow location for this page in your browser settings.';
             if (err && err.code === 2) return 'Location unavailable. Check that location services are on.';
             if (err && err.code === 3) return 'Location request timed out. Try again outdoors or near a window.';
@@ -789,6 +802,7 @@
             e.target.reset();
             $('geoRadius').value = 150;
             renderGeofences();
+            renderLocationOptions();
             toast(`Geofence "${g.name}" added.`);
         }
 
@@ -798,6 +812,75 @@
             state.geofences = state.geofences.filter(x => x.id !== id);
             removeGeofenceDoc(id);
             renderGeofences();
+            renderLocationOptions();
+        }
+
+        // ---------------------------------------------------------------
+        // Saved-location pickers (work without GPS)
+        // ---------------------------------------------------------------
+        let pendingLocationId = '';   // timer location chosen before the timer starts
+
+        function geofenceOptions(firstLabel) {
+            return `<option value="">${firstLabel}</option>` +
+                state.geofences.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+        }
+
+        function renderLocationOptions() {
+            const known = (id) => id && state.geofences.some(g => g.id === id);
+            const tl = $('timerLocation');
+            tl.innerHTML = geofenceOptions('Auto-detect (GPS)');
+            const want = state.timer ? state.timer.geofenceId : pendingLocationId;
+            tl.value = known(want) ? want : '';
+
+            $('formLocation').innerHTML = geofenceOptions(state.geofences.length ? 'None' : 'None (add under Geofences)');
+            syncFormLocationSelect();
+        }
+
+        function syncFormLocationSelect() {
+            const name = $('entryLocationName').value;
+            const g = name ? state.geofences.find(x => x.name === name) : null;
+            $('formLocation').value = g ? g.id : '';
+        }
+
+        function handleFormLocationPick() {
+            const g = state.geofences.find(x => x.id === $('formLocation').value);
+            if (g) setFormLocation(g.lat, g.lng, g.name);
+            else clearFormLocation();
+        }
+
+        function applyTimerLocation(id) {
+            const t = state.timer;
+            const g = state.geofences.find(x => x.id === id);
+            if (g) {
+                Object.assign(t, { geofenceId: g.id, manual: true, lat: g.lat, lng: g.lng, locationName: g.name });
+            } else {
+                Object.assign(t, { geofenceId: null, manual: false, lat: null, lng: null, locationName: '' });
+            }
+        }
+
+        function handleTimerLocationChange() {
+            const id = $('timerLocation').value;
+            pendingLocationId = id;
+            if (!state.timer) return;
+            applyTimerLocation(id);
+            persistSettings();
+            refreshTimerLocationReadout();
+        }
+
+        function refreshTimerLocationReadout() {
+            const t = state.timer;
+            if (!t) return;
+            if (t.manual) {
+                $('liveCoordsReadout').textContent = formatCoords(t.lat, t.lng);
+                $('liveGeofenceReadout').textContent = `${t.locationName} (picked)`;
+                setGpsStatus(`Tracking · at ${t.locationName}`, 'bg-emerald-400', true);
+            } else if (t.lat != null) {
+                updateLiveLocation(t.lat, t.lng, null);
+            } else {
+                $('liveCoordsReadout').textContent = 'Acquiring GPS...';
+                $('liveGeofenceReadout').textContent = 'None (Standard GPS Log)';
+                setGpsStatus('Acquiring GPS…', 'bg-amber-400', true);
+            }
         }
 
         // ---------------------------------------------------------------
@@ -827,7 +910,8 @@
             if (state.timer) return stopTimer();
             const project = $('timerProject').value;
             if (!project || project === '__new__') return toast('Choose a project first.');
-            state.timer = { start: Date.now(), project, lat: null, lng: null, locationName: '' };
+            state.timer = { start: Date.now(), project, lat: null, lng: null, locationName: '', geofenceId: null, manual: false };
+            applyTimerLocation(pendingLocationId);
             state.lastTimerProject = project;
             persistSettings();
             startTimerUI();
@@ -842,13 +926,11 @@
             $('liveGpsDetails').classList.remove('hidden');
             $('timerDisplay').classList.replace('text-indigo-200', 'text-emerald-300');
 
-            if (state.timer.lat != null) updateLiveLocation(state.timer.lat, state.timer.lng, null);
-            else $('liveCoordsReadout').textContent = 'Acquiring GPS...';
-
             tick();
             clearInterval(tickHandle);
             tickHandle = setInterval(tick, 1000);
             startWatchingPosition();
+            refreshTimerLocationReadout();
         }
 
         function startWatchingPosition() {
@@ -861,7 +943,7 @@
             setGpsStatus('Acquiring GPS…', 'bg-amber-400', true);
             watchId = navigator.geolocation.watchPosition(
                 (p) => {
-                    if (!state.timer) return;
+                    if (!state.timer || state.timer.manual) return; // a picked location wins over GPS
                     const { latitude, longitude, accuracy } = p.coords;
                     // The first fix is the session's logged location; the readout follows you as you move.
                     if (state.timer.lat == null) {
@@ -874,6 +956,7 @@
                     updateLiveLocation(latitude, longitude, accuracy);
                 },
                 (err) => {
+                    if (state.timer && state.timer.manual) return;
                     setGpsStatus(err && err.code === 1 ? 'Timer running · no GPS here' : 'Timer running · GPS unavailable', 'bg-amber-400', true);
                     if (state.timer && state.timer.lat == null) $('liveCoordsReadout').textContent = 'Not available';
                 },
@@ -898,6 +981,7 @@
 
         async function stopTimer() {
             const t = state.timer;
+            pendingLocationId = t.geofenceId || '';   // keep the same place selected for the next session
             const rounded = Math.round((Date.now() - t.start) / 36000) / 100;
 
             if (rounded < 0.01) {
@@ -949,7 +1033,7 @@
         function syncTimerUI() {
             if (state.timer && !tickHandle) startTimerUI();
             else if (!state.timer && tickHandle) stopTimerUI();
-            else if (state.timer) tick();
+            else if (state.timer) { tick(); refreshTimerLocationReadout(); }
         }
 
         // ---------------------------------------------------------------
@@ -978,6 +1062,7 @@
                 status.className = 'text-xs text-slate-500 italic';
                 status.textContent = 'No GPS coordinates attached.';
                 $('clearFormGpsBtn').classList.add('hidden');
+                syncFormLocationSelect();
                 return;
             }
             status.className = 'text-xs text-emerald-700 font-medium';
@@ -985,6 +1070,7 @@
                 `<span class="font-mono">${formatCoords(lat, lng)}</span>` +
                 (accuracy ? ` <span class="text-slate-400">(±${Math.round(accuracy)}m)</span>` : '');
             $('clearFormGpsBtn').classList.remove('hidden');
+            syncFormLocationSelect();
         }
 
         function clearFormLocation() { setFormLocation(null, null, ''); }
@@ -1182,6 +1268,7 @@
 
         function renderAll() {
             renderProjectOptions();
+            renderLocationOptions();
             renderStats();
             renderTable();
             syncTimerUI();
