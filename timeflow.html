@@ -2,36 +2,43 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeFlow - Modern Hours Logger</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>TimeFlow</title>
+    <!-- Tailwind CSS (play CDN, pinned) -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- FontAwesome Icons (SVG + JS build, so it loads as a script) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
                     },
                 }
             }
         }
     </script>
     <style>
+        /* Single light theme by design: every surface sets its colour explicitly. */
+        :root { --bg: #f8fafc; --fg: #1e293b; color-scheme: light; }
+        html, body { background: var(--bg); color: var(--fg); }
         @keyframes tf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
         .tf-pulse { animation: tf-pulse 1.2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .tf-pulse { animation: none; } }
         .modal-open { overflow: hidden; }
+        .tabular { font-variant-numeric: tabular-nums; }
+        .tf-header { top: env(safe-area-inset-top, 0px); }
+        .tf-toast { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
     </style>
 </head>
-<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col">
+<body>
+<div class="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased flex flex-col">
 
     <!-- Header / Navigation Bar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <header class="tf-header bg-white border-b border-slate-200 sticky z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
@@ -71,7 +78,7 @@
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Hours Logged</p>
-                    <h3 id="statTotalHours" class="text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <h3 id="statTotalHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
                     <p class="text-xs text-slate-500 mt-1"><span id="statEntryCount" class="font-medium text-indigo-600">0</span> entries recorded</p>
                 </div>
                 <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
@@ -83,7 +90,7 @@
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Earnings</p>
-                    <h3 id="statTotalEarnings" class="text-3xl font-bold text-emerald-600 mt-1">$0.00</h3>
+                    <h3 id="statTotalEarnings" class="tabular text-3xl font-bold text-emerald-600 mt-1">$0.00</h3>
                     <p class="text-xs text-slate-500 mt-1">Calculated from rate</p>
                 </div>
                 <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
@@ -95,7 +102,7 @@
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">This Week</p>
-                    <h3 id="statWeekHours" class="text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <h3 id="statWeekHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
                     <p id="statWeekEarnings" class="text-xs text-emerald-600 font-medium mt-1">$0.00 earned</p>
                 </div>
                 <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
@@ -107,7 +114,7 @@
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">This Month</p>
-                    <h3 id="statMonthHours" class="text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
+                    <h3 id="statMonthHours" class="tabular text-3xl font-bold text-slate-900 mt-1">0.0h</h3>
                     <p id="statMonthEarnings" class="text-xs text-emerald-600 font-medium mt-1">$0.00 earned</p>
                 </div>
                 <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
@@ -140,7 +147,7 @@
                     </div>
 
                     <div class="text-center bg-indigo-950/60 border border-indigo-700/40 px-6 py-2 rounded-xl">
-                        <span id="timerDisplay" class="text-3xl font-mono font-bold tracking-wider text-indigo-200">00:00:00</span>
+                        <span id="timerDisplay" class="tabular text-3xl font-mono font-bold tracking-wider text-indigo-200">00:00:00</span>
                     </div>
 
                     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -172,7 +179,7 @@
                     <i class="fa-solid fa-stopwatch text-indigo-400 text-base"></i>
                     <div>
                         <p class="text-slate-400 uppercase tracking-wider text-[10px]">Session Earnings</p>
-                        <p id="liveEarningsReadout" class="font-medium text-emerald-400">$0.00</p>
+                        <p id="liveEarningsReadout" class="tabular font-medium text-emerald-400">$0.00</p>
                     </div>
                 </div>
             </div>
@@ -238,7 +245,7 @@
                                 <span>GPS Coordinates</span>
                             </span>
                             <div class="flex items-center gap-1.5">
-                                <button type="button" id="clearFormGpsBtn" onclick="clearFormLocation()" class="hidden text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 px-2 py-1 rounded-lg transition text-[11px]" title="Remove location">
+                                <button type="button" id="clearFormGpsBtn" onclick="clearFormLocation()" class="hidden text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 px-2 py-1 rounded-lg transition text-[11px]" title="Remove location" aria-label="Remove location">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                                 <button type="button" onclick="captureCurrentLocationForForm()" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition text-[11px]">
@@ -317,18 +324,19 @@
                         <tfoot id="entriesTableFoot" class="bg-slate-50 text-sm font-semibold text-slate-700 hidden">
                             <tr>
                                 <td class="px-4 py-3" colspan="3">Filtered total</td>
-                                <td class="px-4 py-3 whitespace-nowrap" id="footHours">0.00h</td>
-                                <td class="px-4 py-3 text-emerald-600 whitespace-nowrap" colspan="3" id="footEarnings">$0.00</td>
+                                <td class="px-4 py-3 whitespace-nowrap tabular" id="footHours">0.00h</td>
+                                <td class="px-4 py-3 text-emerald-600 whitespace-nowrap tabular" colspan="3" id="footEarnings">$0.00</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-                <p class="text-xs text-slate-400">Entries are saved in this browser on this device. Use Export CSV to keep a copy.</p>
+                <p id="storageNote" class="text-xs text-slate-400">Entries are saved in this browser on this device. Use Export CSV to keep a copy.</p>
             </div>
         </div>
     </main>
 
     <footer class="text-center text-xs text-slate-400 py-6">TimeFlow &middot; Hours &amp; earnings logger</footer>
+</div>
 
     <!-- Hourly Rate Modal -->
     <div id="rateModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="rateModalTitle">
@@ -344,11 +352,11 @@
                 <div class="grid grid-cols-3 gap-3">
                     <div class="col-span-1">
                         <label for="currencyInput" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Symbol</label>
-                        <input id="currencyInput" type="text" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="currencyInput" type="text" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="col-span-2">
                         <label for="rateInput" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Rate per hour</label>
-                        <input id="rateInput" type="number" min="0" step="any" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="rateInput" type="number" min="0" step="any" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
                 <p class="text-xs text-slate-500">Earnings across the app are calculated as hours &times; this rate.</p>
@@ -373,14 +381,14 @@
 
             <form onsubmit="addGeofence(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                 <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider">Add location</p>
-                <input id="geoName" type="text" required placeholder="Name, e.g. Head Office" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input id="geoName" type="text" required placeholder="Name, e.g. Head Office" aria-label="Location name" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <div class="grid grid-cols-2 gap-3">
-                    <input id="geoLat" type="number" step="any" min="-90" max="90" required placeholder="Latitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <input id="geoLng" type="number" step="any" min="-180" max="180" required placeholder="Longitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="geoLat" type="number" step="any" min="-90" max="90" required placeholder="Latitude" aria-label="Latitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="geoLng" type="number" step="any" min="-180" max="180" required placeholder="Longitude" aria-label="Longitude" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <label for="geoRadius" class="text-xs text-slate-600 whitespace-nowrap">Radius (m)</label>
-                    <input id="geoRadius" type="number" min="10" step="any" value="150" required class="w-28 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="geoRadius" type="number" min="10" step="any" value="150" required class="w-28 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <button type="button" onclick="fillGeofenceFromGps()" class="ml-auto text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
                         <i class="fa-solid fa-crosshairs mr-1"></i>Use my location
                     </button>
@@ -392,23 +400,61 @@
         </div>
     </div>
 
+    <!-- Confirm Dialog (replaces window.confirm, which embedded viewers block) -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="answerConfirm(false)"></div>
+        <div class="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 id="confirmTitle" class="text-base font-bold text-slate-900">Are you sure?</h3>
+            <p id="confirmText" class="text-sm text-slate-600"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmCancel" onclick="answerConfirm(false)" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
+                <button id="confirmOk" onclick="answerConfirm(true)" class="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Project Dialog (replaces window.prompt) -->
+    <div id="projectModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeProjectModal(null)"></div>
+        <form onsubmit="event.preventDefault(); closeProjectModal(document.getElementById('newProjectInput').value)" class="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 id="projectModalTitle" class="text-base font-bold text-slate-900">New project / client</h3>
+            <input id="newProjectInput" type="text" required placeholder="e.g. Acme Corp" aria-label="Project name" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeProjectModal(null)" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition">Add Project</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Toast -->
-    <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl max-w-[90vw] text-center"></div>
+    <div id="toast" class="tf-toast hidden fixed left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl max-w-[90vw] text-center" role="status" aria-live="polite"></div>
 
     <script>
         // ---------------------------------------------------------------
-        // Storage
+        // State & storage
+        //   Local mode: everything in localStorage (file opened directly).
+        //   Account mode: on claude.ai, each person's data lives in their
+        //   private db collection data/users/<id> and syncs across devices.
         // ---------------------------------------------------------------
         const STORE_KEY = 'timeflow.v1';
         const state = {
             entries: [],
+            geofences: [],
             rate: 0,
             currency: '$',
-            geofences: [],
-            timer: null // { start: ms, project: string, lat, lng, locationName }
+            timer: null,            // { start: ms, project, lat, lng, locationName }
+            lastTimerProject: ''
         };
+        let mode = 'local';
+        let col = null;             // db collection for this person
+        let dl = null;              // downloads namespace (claude.ai only)
+        const inViewer = !!(window.claude && window.claude.use);
 
-        function loadState() {
+        function settingsData() {
+            return { rate: state.rate, currency: state.currency, timer: state.timer, lastTimerProject: state.lastTimerProject };
+        }
+
+        function loadLocal() {
             try {
                 const raw = localStorage.getItem(STORE_KEY);
                 if (raw) Object.assign(state, JSON.parse(raw));
@@ -417,9 +463,98 @@
             if (!Array.isArray(state.geofences)) state.geofences = [];
         }
 
-        function saveState() {
-            try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-            catch (e) { toast('Could not save — browser storage is unavailable.'); }
+        function saveLocal() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+        }
+
+        // One write at a time per document.
+        const chains = new Map();
+        function write(docId, fn) {
+            const next = (chains.get(docId) || Promise.resolve()).then(fn).catch(err => {
+                console.error(err);
+                toast('Could not save. Check your connection and try again.');
+            });
+            chains.set(docId, next);
+            return next;
+        }
+        const clean = (o) => JSON.parse(JSON.stringify(o));
+
+        function persistEntry(e) {
+            if (mode === 'db') write('e_' + e.id, () => col.doc('e_' + e.id).set(clean(e)));
+            else saveLocal();
+        }
+        function removeEntryDoc(id) {
+            if (mode === 'db') write('e_' + id, () => col.doc('e_' + id).delete());
+            else saveLocal();
+        }
+        function persistGeofence(g) {
+            if (mode === 'db') write('g_' + g.id, () => col.doc('g_' + g.id).set(clean(g)));
+            else saveLocal();
+        }
+        function removeGeofenceDoc(id) {
+            if (mode === 'db') write('g_' + id, () => col.doc('g_' + id).delete());
+            else saveLocal();
+        }
+        function persistSettings() {
+            if (mode === 'db') write('settings', () => col.doc('settings').set(clean(settingsData())));
+            else saveLocal();
+        }
+
+        async function connect() {
+            if (!inViewer) return;
+            try {
+                const [db, user, downloads] = await Promise.all([
+                    window.claude.use('db'), window.claude.use('user'), window.claude.use('downloads')
+                ]);
+                dl = downloads;
+                const id = user ? await user.id() : null;
+                if (!db || !id) {
+                    $('storageNote').textContent = 'Entries are saved in this browser only. Sign in to claude.ai to sync them across devices.';
+                    return;
+                }
+                col = db.collection('data/users/' + id);
+                mode = 'db';
+                $('storageNote').textContent = 'Connecting to your account…';
+                const slow = setTimeout(() => { $('storageNote').textContent = 'Can’t reach your saved entries yet. Changes will sync when the connection returns.'; }, 10000);
+                let first = true;
+                col.onSnapshot(snap => {
+                    const entries = [], geofences = []; let st = null;
+                    for (const d of snap.docs) {
+                        const v = d.data();
+                        if (d.id === 'settings') st = v;
+                        else if (d.id.startsWith('e_')) entries.push(clean(v));
+                        else if (d.id.startsWith('g_')) geofences.push(clean(v));
+                    }
+                    if (!snap.metadata.fromCache) {
+                        clearTimeout(slow);
+                        $('storageNote').textContent = 'Saved to your Claude account and synced across your devices. Only you can see these entries.';
+                        // First load on this account: move anything kept in this browser into the account.
+                        if (first) {
+                            first = false;
+                            if (!entries.length && !geofences.length && !st && (state.entries.length || state.geofences.length || state.rate)) {
+                                state.entries.forEach(persistEntry);
+                                state.geofences.forEach(persistGeofence);
+                                persistSettings();
+                                return renderAll();
+                            }
+                        }
+                    }
+                    state.entries = entries;
+                    state.geofences = geofences;
+                    state.rate = Number(st?.rate) || 0;
+                    state.currency = st?.currency || '$';
+                    state.timer = st?.timer || null;
+                    state.lastTimerProject = st?.lastTimerProject || '';
+                    renderAll();
+                    if (!$('geofenceModal').classList.contains('hidden')) renderGeofences();
+                }, err => {
+                    clearTimeout(slow);
+                    console.error(err);
+                    $('storageNote').textContent = 'Sync stopped. Reload the page to reconnect.';
+                });
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         // ---------------------------------------------------------------
@@ -449,8 +584,7 @@
 
         function startOfWeek(d = new Date()) {
             const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            const diff = (x.getDay() + 6) % 7; // Monday = 0
-            x.setDate(x.getDate() - diff);
+            x.setDate(x.getDate() - (x.getDay() + 6) % 7); // Monday start
             return x;
         }
 
@@ -474,7 +608,7 @@
             return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
         }
 
-        function pad(n) { return String(n).padStart(2, '0'); }
+        const pad = (n) => String(n).padStart(2, '0');
 
         let toastTimer;
         function toast(msg) {
@@ -482,7 +616,7 @@
             t.textContent = msg;
             t.classList.remove('hidden');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => t.classList.add('hidden'), 2800);
+            toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
         }
 
         const CATEGORY_STYLES = {
@@ -494,6 +628,48 @@
             Testing: 'bg-lime-50 text-lime-700',
             Other: 'bg-slate-100 text-slate-700'
         };
+
+        // ---------------------------------------------------------------
+        // In-page dialogs
+        // ---------------------------------------------------------------
+        const MODALS = ['rateModal', 'geofenceModal', 'confirmModal', 'projectModal'];
+        function openModal(id) { $(id).classList.remove('hidden'); document.body.classList.add('modal-open'); }
+        function closeModal(id) {
+            $(id).classList.add('hidden');
+            if (MODALS.every(m => $(m).classList.contains('hidden'))) document.body.classList.remove('modal-open');
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!$('confirmModal').classList.contains('hidden')) return answerConfirm(false);
+            if (!$('projectModal').classList.contains('hidden')) return closeProjectModal(null);
+            ['rateModal', 'geofenceModal'].forEach(id => { if (!$(id).classList.contains('hidden')) closeModal(id); });
+        });
+
+        let confirmResolve = null;
+        function askConfirm(title, text, okLabel = 'Delete') {
+            $('confirmTitle').textContent = title;
+            $('confirmText').textContent = text;
+            $('confirmOk').textContent = okLabel;
+            openModal('confirmModal');
+            setTimeout(() => $('confirmCancel').focus(), 30);
+            return new Promise(res => { confirmResolve = res; });
+        }
+        function answerConfirm(v) {
+            closeModal('confirmModal');
+            if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(v); }
+        }
+
+        let projectResolve = null;
+        function askProjectName() {
+            $('newProjectInput').value = '';
+            openModal('projectModal');
+            setTimeout(() => $('newProjectInput').focus(), 30);
+            return new Promise(res => { projectResolve = res; });
+        }
+        function closeProjectModal(value) {
+            closeModal('projectModal');
+            if (projectResolve) { const r = projectResolve; projectResolve = null; r(value == null ? null : String(value).trim()); }
+        }
 
         // ---------------------------------------------------------------
         // Geolocation & geofences
@@ -516,7 +692,7 @@
 
         function getPosition() {
             return new Promise((resolve, reject) => {
-                if (!('geolocation' in navigator)) return reject(new Error('Geolocation is not supported by this browser.'));
+                if (!('geolocation' in navigator)) return reject(new Error('This browser does not support location.'));
                 navigator.geolocation.getCurrentPosition(
                     (p) => resolve(p.coords),
                     (err) => reject(new Error(geoErrorText(err))),
@@ -526,11 +702,12 @@
         }
 
         function geoErrorText(err) {
-            if (!err) return 'Unknown location error.';
-            if (err.code === 1) return 'Location permission denied.';
-            if (err.code === 2) return 'Location unavailable.';
-            if (err.code === 3) return 'Location request timed out.';
-            return err.message || 'Location error.';
+            if (err && err.code === 1) return inViewer
+                ? 'Location isn’t available inside claude.ai. Enter coordinates by hand, or open timeflow.html directly in your browser for GPS.'
+                : 'Location permission denied. Allow location for this page in your browser settings.';
+            if (err && err.code === 2) return 'Location unavailable. Check that location services are on.';
+            if (err && err.code === 3) return 'Location request timed out. Try again outdoors or near a window.';
+            return (err && err.message) || 'Location error.';
         }
 
         function locationLabel(entry) {
@@ -542,12 +719,6 @@
         // ---------------------------------------------------------------
         // Rate modal
         // ---------------------------------------------------------------
-        function openModal(id) { $(id).classList.remove('hidden'); document.body.classList.add('modal-open'); }
-        function closeModal(id) { $(id).classList.add('hidden'); document.body.classList.remove('modal-open'); }
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') ['rateModal', 'geofenceModal'].forEach(id => { if (!$(id).classList.contains('hidden')) closeModal(id); });
-        });
-
         function openRateModal() {
             $('rateInput').value = state.rate || '';
             $('currencyInput').value = state.currency;
@@ -558,10 +729,10 @@
         function saveRate(e) {
             e.preventDefault();
             const r = parseFloat($('rateInput').value);
-            if (!(r >= 0)) return toast('Enter a valid rate.');
+            if (!(r >= 0)) return toast('Enter a rate of 0 or more.');
             state.rate = r;
             state.currency = $('currencyInput').value.trim() || '$';
-            saveState();
+            persistSettings();
             closeModal('rateModal');
             renderAll();
             toast('Hourly rate updated.');
@@ -578,7 +749,7 @@
         function renderGeofences() {
             const list = $('geofenceList');
             if (!state.geofences.length) {
-                list.innerHTML = '<li class="text-sm text-slate-400 italic text-center py-3">No geofences yet.</li>';
+                list.innerHTML = '<li class="text-sm text-slate-400 italic text-center py-3">No geofences yet. Add your office or a client site below.</li>';
                 return;
             }
             list.innerHTML = state.geofences.map(g => `
@@ -612,20 +783,20 @@
                 lng: parseFloat($('geoLng').value),
                 radius: parseFloat($('geoRadius').value)
             };
-            if (!g.name || isNaN(g.lat) || isNaN(g.lng) || !(g.radius > 0)) return toast('Fill in all geofence fields.');
+            if (!g.name || isNaN(g.lat) || isNaN(g.lng) || !(g.radius > 0)) return toast('Fill in a name, latitude, longitude and radius.');
             state.geofences.push(g);
-            saveState();
+            persistGeofence(g);
             e.target.reset();
             $('geoRadius').value = 150;
             renderGeofences();
             toast(`Geofence "${g.name}" added.`);
         }
 
-        function deleteGeofence(id) {
+        async function deleteGeofence(id) {
             const g = state.geofences.find(x => x.id === id);
-            if (!g || !confirm(`Delete geofence "${g.name}"?`)) return;
+            if (!g || !(await askConfirm('Delete geofence?', `"${g.name}" will be removed. Existing entries keep their location name.`))) return;
             state.geofences = state.geofences.filter(x => x.id !== id);
-            saveState();
+            removeGeofenceDoc(id);
             renderGeofences();
         }
 
@@ -637,32 +808,28 @@
 
         function setGpsStatus(text, dotClass, pulse) {
             $('gpsStatusText').textContent = text;
-            const dot = $('gpsPulseDot');
-            dot.className = `w-2 h-2 rounded-full inline-block ${dotClass}${pulse ? ' tf-pulse' : ''}`;
+            $('gpsPulseDot').className = `w-2 h-2 rounded-full inline-block ${dotClass}${pulse ? ' tf-pulse' : ''}`;
         }
 
-        function handleTimerProjectChange() {
-            const sel = $('timerProject');
-            if (sel.value !== '__new__') return;
-            const name = (prompt('New project / client name:') || '').trim();
+        async function handleTimerProjectChange() {
+            if ($('timerProject').value !== '__new__') return;
+            const name = await askProjectName();
             if (name) {
                 state.lastTimerProject = name;
-                saveState();
+                persistSettings();
                 renderProjectOptions(name);
             } else {
                 renderProjectOptions();
             }
         }
 
-        async function toggleGpsTimer() {
+        function toggleGpsTimer() {
             if (state.timer) return stopTimer();
-
             const project = $('timerProject').value;
             if (!project || project === '__new__') return toast('Choose a project first.');
-
             state.timer = { start: Date.now(), project, lat: null, lng: null, locationName: '' };
             state.lastTimerProject = project;
-            saveState();
+            persistSettings();
             startTimerUI();
         }
 
@@ -672,7 +839,6 @@
             btn.classList.add('bg-rose-500', 'hover:bg-rose-600', 'text-white');
             btn.innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop &amp; Log</span>';
             $('timerProject').disabled = true;
-            $('timerProject').value = state.timer.project;
             $('liveGpsDetails').classList.remove('hidden');
             $('timerDisplay').classList.replace('text-indigo-200', 'text-emerald-300');
 
@@ -686,8 +852,9 @@
         }
 
         function startWatchingPosition() {
+            if (watchId != null) return;
             if (!('geolocation' in navigator)) {
-                setGpsStatus('Timer running · GPS unsupported', 'bg-amber-400', true);
+                setGpsStatus('Timer running · no GPS', 'bg-amber-400', true);
                 $('liveCoordsReadout').textContent = 'Not available';
                 return;
             }
@@ -696,19 +863,19 @@
                 (p) => {
                     if (!state.timer) return;
                     const { latitude, longitude, accuracy } = p.coords;
-                    // Keep the first fix as the session's logged location; update the live readout as the user moves.
+                    // The first fix is the session's logged location; the readout follows you as you move.
                     if (state.timer.lat == null) {
                         state.timer.lat = latitude;
                         state.timer.lng = longitude;
                         const g = matchGeofence(latitude, longitude);
                         state.timer.locationName = g ? g.name : '';
-                        saveState();
+                        persistSettings();
                     }
                     updateLiveLocation(latitude, longitude, accuracy);
                 },
                 (err) => {
-                    setGpsStatus('Timer running · ' + geoErrorText(err), 'bg-amber-400', true);
-                    if (state.timer && state.timer.lat == null) $('liveCoordsReadout').textContent = 'Unavailable';
+                    setGpsStatus(err && err.code === 1 ? 'Timer running · no GPS here' : 'Timer running · GPS unavailable', 'bg-amber-400', true);
+                    if (state.timer && state.timer.lat == null) $('liveCoordsReadout').textContent = 'Not available';
                 },
                 { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
             );
@@ -729,17 +896,16 @@
             document.title = `${$('timerDisplay').textContent} · TimeFlow`;
         }
 
-        function stopTimer() {
+        async function stopTimer() {
             const t = state.timer;
-            const hours = (Date.now() - t.start) / 3600000;
-            const rounded = Math.round(hours * 100) / 100;
+            const rounded = Math.round((Date.now() - t.start) / 36000) / 100;
 
             if (rounded < 0.01) {
-                if (!confirm('Less than a minute recorded. Discard this session?')) return;
+                if (!(await askConfirm('Discard this session?', 'Less than a minute was recorded, so there is nothing to log.', 'Discard'))) return;
+                if (!state.timer) return;
             } else {
-                const startTime = new Date(t.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const endTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                state.entries.push({
+                const opts = { hour: '2-digit', minute: '2-digit' };
+                const entry = {
                     id: uid(),
                     date: toISODate(new Date(t.start)),
                     project: t.project,
@@ -748,15 +914,16 @@
                     lat: t.lat,
                     lng: t.lng,
                     locationName: t.locationName || '',
-                    notes: `Live timer ${startTime}–${endTime}`,
+                    notes: `Live timer ${new Date(t.start).toLocaleTimeString([], opts)}–${new Date().toLocaleTimeString([], opts)}`,
                     createdAt: Date.now()
-                });
+                };
+                state.entries.push(entry);
+                persistEntry(entry);
                 toast(`Logged ${rounded.toFixed(2)}h to ${t.project}.`);
             }
 
             state.timer = null;
-            saveState();
-            stopTimerUI();
+            persistSettings();
             renderAll();
         }
 
@@ -775,7 +942,14 @@
             $('liveGeofenceReadout').textContent = 'None (Standard GPS Log)';
             $('liveEarningsReadout').textContent = money(0);
             setGpsStatus('GPS Ready', 'bg-slate-400', false);
-            document.title = 'TimeFlow - Modern Hours Logger';
+            document.title = 'TimeFlow';
+        }
+
+        // Keep the timer UI in step with state (also when another device starts or stops it).
+        function syncTimerUI() {
+            if (state.timer && !tickHandle) startTimerUI();
+            else if (!state.timer && tickHandle) stopTimerUI();
+            else if (state.timer) tick();
         }
 
         // ---------------------------------------------------------------
@@ -818,7 +992,7 @@
         function handleFormSubmit(e) {
             e.preventDefault();
             const hours = parseFloat($('entryHours').value);
-            if (!(hours > 0 && hours <= 24)) return toast('Hours must be between 0 and 24.');
+            if (!(hours > 0 && hours <= 24)) return toast('Hours must be more than 0 and at most 24.');
 
             const latRaw = $('entryLat').value, lngRaw = $('entryLng').value;
             const data = {
@@ -834,15 +1008,17 @@
             if (!data.date || !data.project) return toast('Date and project are required.');
 
             const id = $('entryId').value;
-            if (id) {
-                const i = state.entries.findIndex(x => x.id === id);
-                if (i > -1) state.entries[i] = { ...state.entries[i], ...data };
+            const i = id ? state.entries.findIndex(x => x.id === id) : -1;
+            let entry;
+            if (i > -1) {
+                entry = state.entries[i] = { ...state.entries[i], ...data };
                 toast('Entry updated.');
             } else {
-                state.entries.push({ id: uid(), createdAt: Date.now(), ...data });
+                entry = { id: uid(), createdAt: Date.now(), ...data };
+                state.entries.push(entry);
                 toast('Entry saved.');
             }
-            saveState();
+            persistEntry(entry);
             resetForm();
             renderAll();
         }
@@ -876,21 +1052,24 @@
             $('entryHours').focus({ preventScroll: true });
         }
 
-        function deleteEntry(id) {
+        async function deleteEntry(id) {
             const en = state.entries.find(x => x.id === id);
-            if (!en || !confirm(`Delete ${en.hours}h on ${formatDate(en.date)} for "${en.project}"?`)) return;
+            if (!en) return;
+            if (!(await askConfirm('Delete entry?', `${en.hours}h on ${formatDate(en.date)} for "${en.project}" will be removed.`))) return;
             state.entries = state.entries.filter(x => x.id !== id);
+            removeEntryDoc(id);
             if ($('entryId').value === id) resetForm();
-            saveState();
             renderAll();
             toast('Entry deleted.');
         }
 
-        function clearAllData() {
+        async function clearAllData() {
             if (!state.entries.length) return toast('There are no entries to clear.');
-            if (!confirm(`Delete all ${state.entries.length} entries? This cannot be undone. (Rate and geofences are kept.)`)) return;
+            const n = state.entries.length;
+            if (!(await askConfirm(`Delete all ${n} entries?`, 'This cannot be undone. Your rate and geofences are kept.', 'Delete all'))) return;
+            const ids = state.entries.map(e => e.id);
             state.entries = [];
-            saveState();
+            if (mode === 'db') ids.forEach(removeEntryDoc); else saveLocal();
             resetForm();
             renderAll();
             toast('All entries cleared.');
@@ -906,24 +1085,22 @@
         function renderProjectOptions(select) {
             const names = projectNames();
             if (state.lastTimerProject && !names.includes(state.lastTimerProject)) names.unshift(state.lastTimerProject);
+            if (state.timer && !names.includes(state.timer.project)) names.unshift(state.timer.project);
             if (!names.length) names.push('General');
 
-            // Timer select
             const tp = $('timerProject');
-            const want = select || (state.timer && state.timer.project) || tp.value || state.lastTimerProject || names[0];
-            if (state.timer && !names.includes(state.timer.project)) names.unshift(state.timer.project);
+            const want = (state.timer && state.timer.project) || select || (tp.value !== '__new__' && tp.value) || state.lastTimerProject || names[0];
             tp.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('') +
                 '<option value="__new__">+ New project…</option>';
             tp.value = names.includes(want) ? want : names[0];
 
-            // Datalist
-            $('projectSuggestions').innerHTML = projectNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+            const known = projectNames();
+            $('projectSuggestions').innerHTML = known.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
 
-            // Filter select
             const fp = $('filterProject');
             const cur = fp.value;
-            fp.innerHTML = '<option value="">All Projects</option>' + projectNames().map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-            fp.value = projectNames().includes(cur) ? cur : '';
+            fp.innerHTML = '<option value="">All Projects</option>' + known.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            fp.value = known.includes(cur) ? cur : '';
         }
 
         function renderStats() {
@@ -971,19 +1148,20 @@
 
             body.innerHTML = rows.map(e => {
                 const loc = locationLabel(e);
-                const mapLink = (e.lat != null && e.lng != null)
-                    ? `https://www.openstreetmap.org/?mlat=${e.lat}&mlon=${e.lng}#map=17/${e.lat}/${e.lng}` : '';
-                const locCell = loc
-                    ? `<a href="${mapLink}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 ${e.locationName ? 'font-medium' : 'font-mono text-xs'}" title="${e.lat != null ? formatCoords(e.lat, e.lng) : ''}">
-                           <i class="fa-solid ${e.locationName ? 'fa-map-pin' : 'fa-location-dot'}"></i>${escapeHtml(loc)}</a>`
-                    : '<span class="text-slate-300">—</span>';
+                const hasCoords = e.lat != null && e.lng != null;
+                const mapLink = hasCoords ? `https://www.openstreetmap.org/?mlat=${e.lat}&mlon=${e.lng}#map=17/${e.lat}/${e.lng}` : '';
+                const inner = `<i class="fa-solid ${e.locationName ? 'fa-map-pin' : 'fa-location-dot'}"></i>${escapeHtml(loc)}`;
+                const locCell = !loc ? '<span class="text-slate-300">—</span>'
+                    : hasCoords
+                        ? `<a href="${mapLink}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 ${e.locationName ? 'font-medium' : 'font-mono text-xs'}" title="${formatCoords(e.lat, e.lng)}">${inner}</a>`
+                        : `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">${inner}</span>`;
                 const cat = e.category || 'Other';
                 return `
                 <tr class="hover:bg-slate-50/70 transition">
                     <td class="px-4 py-3 whitespace-nowrap text-slate-600">${formatDate(e.date)}</td>
                     <td class="px-4 py-3 font-semibold text-slate-900">${escapeHtml(e.project)}</td>
                     <td class="px-4 py-3 whitespace-nowrap"><span class="text-xs font-medium px-2 py-1 rounded-lg ${CATEGORY_STYLES[cat] || CATEGORY_STYLES.Other}">${escapeHtml(cat)}</span></td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="px-4 py-3 whitespace-nowrap tabular">
                         <span class="font-semibold text-slate-900">${Number(e.hours).toFixed(2)}h</span>
                         ${state.rate ? `<span class="block text-xs text-emerald-600">${money(e.hours * state.rate)}</span>` : ''}
                     </td>
@@ -1006,12 +1184,13 @@
             renderProjectOptions();
             renderStats();
             renderTable();
+            syncTimerUI();
         }
 
         // ---------------------------------------------------------------
-        // CSV export (exports the currently filtered rows)
+        // CSV export (the rows currently shown by the filters)
         // ---------------------------------------------------------------
-        function exportToCSV() {
+        async function exportToCSV() {
             const rows = filteredEntries();
             if (!rows.length) return toast('No entries to export.');
             const cell = (v) => {
@@ -1030,25 +1209,42 @@
             const total = rows.reduce((s, e) => s + (Number(e.hours) || 0), 0);
             lines.push(['TOTAL', '', '', total.toFixed(2), '', (total * state.rate).toFixed(2), '', '', '', ''].map(cell).join(','));
 
-            const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
+            const csv = '﻿' + lines.join('\r\n');
+            const filename = `timeflow-${toISODate(new Date())}.csv`;
+            const label = `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`;
+
+            if (inViewer) {
+                // Inside claude.ai, files are offered through the viewer's save prompt.
+                if (!dl) dl = await window.claude.use('downloads');
+                if (!dl) return toast('Downloads aren’t available in this view.');
+                try {
+                    await dl.save({ filename, data: new Blob([csv], { type: 'text/csv' }) });
+                    toast(`Exported ${label}.`);
+                } catch (err) {
+                    if (err && err.code === 'declined') return;
+                    toast(err && err.code === 'rate_limited' ? 'A save prompt is already open.' : 'Could not export the file.');
+                }
+                return;
+            }
+
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `timeflow-${toISODate(new Date())}.csv`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            toast(`Exported ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}.`);
+            toast(`Exported ${label}.`);
         }
 
         // ---------------------------------------------------------------
         // Init
         // ---------------------------------------------------------------
-        loadState();
+        loadLocal();
         resetForm();
         renderAll();
-        if (state.timer) startTimerUI(); // resume a timer that was running before reload
+        connect();
     </script>
 </body>
 </html>
